@@ -101,6 +101,23 @@ body {
 [data-theme="light"] .titlebar { border-bottom-color: rgba(0,0,0,0.06); }
 .titlebar-drag { flex: 1; }
 
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color .1s;
+  -webkit-app-region: no-drag;
+}
+.pin-btn:hover { color: var(--text2); }
+.pin-btn.pinned { color: var(--text); }
+
 .sidebar-top {
   padding: 10px 20px 8px;
 }

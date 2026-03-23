@@ -87,6 +87,14 @@ export default function App() {
   const [loading, setLoading] = useState(false)
 
   const [mainCollapsed, setMainCollapsed] = useState(false)
+  const [pinned, setPinned] = useState(false)
+
+  const togglePin = async () => {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const next = !pinned
+    await getCurrentWindow().setAlwaysOnTop(next)
+    setPinned(next)
+  }
   const prevWidthRef = useRef<number>(900)
 
   const toggleCollapse = async () => {
@@ -278,7 +286,16 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <div className="titlebar"><div className="titlebar-drag" /><WinControls /></div>
+      <div className="titlebar">
+        <button className={`pin-btn${pinned ? ' pinned' : ''}`} onClick={togglePin} title={pinned ? '取消置顶' : '置顶窗口'}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+          </svg>
+        </button>
+        <div className="titlebar-drag" />
+        <WinControls />
+      </div>
       <div className={`app${mainCollapsed ? ' main-collapsed' : ''}`}>
         {/* Sidebar */}
         <div className="sidebar">
