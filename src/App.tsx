@@ -123,7 +123,7 @@ export default function App() {
       return
     }
     setDiffsLoading(true)
-    invoke<DiffFile[]>('get_diff', { projectPath, commitHash: selectedId })
+    invoke<DiffFile[]>('get_diff', { projectPath, saveId: selectedId })
       .then(setCurrentDiffs)
       .catch(() => setCurrentDiffs([]))
       .finally(() => setDiffsLoading(false))
@@ -192,7 +192,7 @@ export default function App() {
     if (!confirm(`确定要回滚到「${s.name}」吗？\n\n当前工作区的未存档修改将被覆盖。`)) return
     showNotif('正在回滚…', 'acc')
     try {
-      await invoke('rollback_to', { projectPath, commitHash: id })
+      await invoke('rollback_to', { projectPath, saveId: id })
       showNotif(`已回滚到：${s.name}（文件已恢复，可创建新存档保存当前状态）`)
     } catch (e) {
       showNotif('回滚失败：' + String(e), 'acc')
