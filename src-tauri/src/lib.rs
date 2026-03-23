@@ -15,6 +15,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_saves,
             commands::create_save,
+            commands::auto_save,
             commands::get_diff,
             commands::rollback_to,
         ])

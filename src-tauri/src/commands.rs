@@ -254,6 +254,76 @@ fn delta_summary(diff: &git2::Diff) -> Result<String, String> {
     })
 }
 
+// ── Auto-save (amend if HEAD is an auto-save commit) ─────────────────────────
+
+/// Like `create_save`, but always writes a commit named "自动存档".
+/// If the current HEAD is already an auto-save commit it is amended in-place
+/// (i.e. replaced with the same parents), so the save list stays at one entry.
+#[tauri::command]
+pub fn auto_save(project_path: String) -> Result<String, String> {
+    let repo = open_or_init_shadow(&project_path)?;
+    let shadow_root = shadow_path(&project_path);
+
+    sync_to_shadow(&project_path, &shadow_root)
+        .map_err(|e| format!("同步文件失败: {}", e))?;
+
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+    index.clear().map_err(|e| e.to_string())?;
+    index
+        .add_all(["*"].iter(), IndexAddOption::DEFAULT, None)
+        .map_err(|e| e.to_string())?;
+    index.write().map_err(|e| e.to_string())?;
+    let tree_id = index.write_tree().map_err(|e| e.to_string())?;
+    let tree = repo.find_tree(tree_id).map_err(|e| e.to_string())?;
+
+    let head_commit = repo.head().ok().and_then(|h| h.peel_to_commit().ok());
+
+    let is_auto = head_commit
+        .as_ref()
+        .map_or(false, |c| c.message().unwrap_or("").starts_with("自动存档"));
+
+    // Delta: compare against what existed before the auto-save slot
+    let base_tree = if is_auto {
+        head_commit.as_ref()
+            .and_then(|c| c.parent(0).ok())
+            .and_then(|p| p.tree().ok())
+    } else {
+        head_commit.as_ref().and_then(|c| c.tree().ok())
+    };
+
+    let diff = repo
+        .diff_tree_to_tree(base_tree.as_ref(), Some(&tree), None)
+        .map_err(|e| e.to_string())?;
+    let delta = delta_summary(&diff)?;
+
+    let msg = encode_msg("自动存档", "", &delta);
+    let sig = sig()?;
+
+    // Collect parent OIDs first (avoids borrow/move conflicts with head_commit)
+    let parent_oids: Vec<git2::Oid> = if is_auto {
+        // Amend: reuse head's own parents so the auto-save slot stays in place
+        head_commit.as_ref()
+            .map(|c| c.parent_ids().collect())
+            .unwrap_or_default()
+    } else {
+        // Normal append: current head becomes the parent
+        head_commit.as_ref()
+            .map(|c| vec![c.id()])
+            .unwrap_or_default()
+    };
+    let parents: Vec<git2::Commit> = parent_oids
+        .iter()
+        .filter_map(|oid| repo.find_commit(*oid).ok())
+        .collect();
+    let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+
+    let oid = repo
+        .commit(Some("HEAD"), &sig, &sig, &msg, &tree, &parent_refs)
+        .map_err(|e| e.to_string())?;
+
+    Ok(oid.to_string())
+}
+
 // ── Tauri commands ───────────────────────────────────────────────────────────
 
 #[tauri::command]

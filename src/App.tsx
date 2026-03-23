@@ -26,6 +26,8 @@ interface DiffFile {
 const PROJECT_PATH_KEY = 'savepoint_project_path'
 const SELECTED_KEY = 'savepoint_selected'
 const THEME_KEY = 'savepoint_theme'
+const AUTO_SAVE_ENABLED_KEY = 'savepoint_autosave_enabled'
+const AUTO_SAVE_INTERVAL_KEY = 'savepoint_autosave_interval'
 
 function formatTime(ts: number): string {
   const diff = Date.now() - ts
@@ -86,6 +88,13 @@ export default function App() {
   )
   const [loading, setLoading] = useState(false)
 
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() =>
+    localStorage.getItem(AUTO_SAVE_ENABLED_KEY) === 'true'
+  )
+  const [autoSaveInterval, setAutoSaveInterval] = useState<number>(() =>
+    parseInt(localStorage.getItem(AUTO_SAVE_INTERVAL_KEY) || '30', 10)
+  )
+
   const [mainCollapsed, setMainCollapsed] = useState(false)
   const [pinned, setPinned] = useState(false)
 
@@ -132,11 +141,49 @@ export default function App() {
   })
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Always-fresh callback ref so the interval doesn't capture stale closures
+  const autoSaveCallbackRef = useRef<() => void>(() => {})
 
   // Persist selected id
   useEffect(() => {
     if (selectedId) localStorage.setItem(SELECTED_KEY, selectedId)
   }, [selectedId])
+
+  // Persist auto-save settings
+  useEffect(() => {
+    localStorage.setItem(AUTO_SAVE_ENABLED_KEY, String(autoSaveEnabled))
+  }, [autoSaveEnabled])
+
+  useEffect(() => {
+    localStorage.setItem(AUTO_SAVE_INTERVAL_KEY, String(autoSaveInterval))
+  }, [autoSaveInterval])
+
+  // Keep auto-save callback ref fresh (captures latest state without resetting the timer)
+  autoSaveCallbackRef.current = async () => {
+    if (!projectPath) return
+    try {
+      const newHash = await invoke<string>('auto_save', { projectPath })
+      const result = await invoke<SaveInfo[]>('get_saves', { projectPath })
+      setSaves(result)
+      setSelectedId(newHash)
+      showNotif('自动存档完成')
+    } catch {
+      // silently fail — don't interrupt the user
+    }
+  }
+
+  // Auto-save timer — reset whenever enabled/interval/project changes
+  useEffect(() => {
+    if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current)
+    if (!autoSaveEnabled || !projectPath) return
+    autoSaveTimerRef.current = setInterval(() => {
+      autoSaveCallbackRef.current()
+    }, autoSaveInterval * 60 * 1000)
+    return () => {
+      if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current)
+    }
+  }, [autoSaveEnabled, autoSaveInterval, projectPath])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -363,6 +410,12 @@ export default function App() {
             <div style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
               {saves.length} 个存档 · {basename(projectPath)}
             </div>
+            {autoSaveEnabled && (
+              <div className="autosave-badge">
+                <span className="autosave-dot" />
+                每 {autoSaveInterval} 分钟自动存档
+              </div>
+            )}
           </div>
 
           {/* Divider collapse button */}
@@ -383,7 +436,17 @@ export default function App() {
         {/* Main panel */}
         <div className="main">
           {selectedId === 'settings' ? (
-            <SettingsPanel showNotif={showNotif} projectPath={projectPath} onPickFolder={pickFolder} theme={theme} toggleTheme={toggleTheme} />
+            <SettingsPanel
+              showNotif={showNotif}
+              projectPath={projectPath}
+              onPickFolder={pickFolder}
+              theme={theme}
+              toggleTheme={toggleTheme}
+              autoSaveEnabled={autoSaveEnabled}
+              autoSaveInterval={autoSaveInterval}
+              onAutoSaveToggle={setAutoSaveEnabled}
+              onAutoSaveIntervalChange={setAutoSaveInterval}
+            />
           ) : currentSave ? (
             <SaveDetail
               save={currentSave}
@@ -536,12 +599,20 @@ function SettingsPanel({
   onPickFolder,
   theme,
   toggleTheme,
+  autoSaveEnabled,
+  autoSaveInterval,
+  onAutoSaveToggle,
+  onAutoSaveIntervalChange,
 }: {
   showNotif: (text: string, type?: 'normal' | 'acc') => void
   projectPath: string
   onPickFolder: () => void
   theme: 'dark' | 'light'
   toggleTheme: () => void
+  autoSaveEnabled: boolean
+  autoSaveInterval: number
+  onAutoSaveToggle: (enabled: boolean) => void
+  onAutoSaveIntervalChange: (interval: number) => void
 }) {
   return (
     <>
@@ -570,17 +641,31 @@ function SettingsPanel({
             <div className="setting-row">
               <div>
                 <div className="setting-label">启用自动存档</div>
-                <div className="setting-sub">定时保存当前状态（即将推出）</div>
+                <div className="setting-sub">按设定间隔自动保存当前项目状态</div>
               </div>
               <label className="toggle">
-                <input type="checkbox" onChange={e => showNotif(e.target.checked ? '自动存档已开启' : '自动存档已关闭')} />
+                <input
+                  type="checkbox"
+                  checked={autoSaveEnabled}
+                  onChange={e => {
+                    onAutoSaveToggle(e.target.checked)
+                    showNotif(e.target.checked ? '自动存档已开启' : '自动存档已关闭')
+                  }}
+                />
                 <div className="toggle-slider" />
               </label>
             </div>
             <div className="setting-row">
-              <div className="setting-label">存档间隔</div>
+              <div className="setting-label" style={{ color: autoSaveEnabled ? undefined : 'var(--text3)' }}>存档间隔</div>
               <div className="setting-control">
-                <select defaultValue="30" onChange={() => showNotif('设置已保存')}>
+                <select
+                  value={autoSaveInterval}
+                  disabled={!autoSaveEnabled}
+                  onChange={e => {
+                    onAutoSaveIntervalChange(parseInt(e.target.value, 10))
+                    showNotif('存档间隔已更新')
+                  }}
+                >
                   <option value="15">15 分钟</option>
                   <option value="30">30 分钟</option>
                   <option value="60">1 小时</option>
