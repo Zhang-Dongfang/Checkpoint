@@ -96,8 +96,6 @@ export default function App() {
   const [notif, setNotif] = useState<{ text: string; type: 'normal' | 'acc'; show: boolean }>({
     text: '', type: 'normal', show: false,
   })
-  const [clock, setClock] = useState(() => new Date().toLocaleTimeString('zh-CN'))
-
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -105,12 +103,6 @@ export default function App() {
   useEffect(() => {
     if (selectedId) localStorage.setItem(SELECTED_KEY, selectedId)
   }, [selectedId])
-
-  // Clock
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date().toLocaleTimeString('zh-CN')), 1000)
-    return () => clearInterval(t)
-  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -320,7 +312,6 @@ export default function App() {
                         <div className="save-title">{s.name}</div>
                         <div className="save-time">{formatTime(s.time)}</div>
                       </div>
-                      <div className="save-delta">{s.delta}</div>
                     </div>
                   ))}
                 </div>
@@ -342,13 +333,9 @@ export default function App() {
           ) : currentSave ? (
             <SaveDetail
               save={currentSave}
-              saves={saves}
               diffs={currentDiffs}
               diffsLoading={diffsLoading}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
               onRollback={rollback}
-              showNotif={showNotif}
             />
           ) : (
             <div className="empty-state">
@@ -357,13 +344,6 @@ export default function App() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Status bar */}
-      <div className="statusbar">
-        <div className="status-item"><div className="status-dot" />监听中</div>
-        <div className="status-item">项目：{basename(projectPath)}</div>
-        <div className="status-item">{clock}</div>
       </div>
 
       {/* Save Modal */}
@@ -420,16 +400,12 @@ export default function App() {
 
 interface SaveDetailProps {
   save: SaveInfo
-  saves: SaveInfo[]
   diffs: DiffFile[]
   diffsLoading: boolean
-  selectedId: string | null
-  onSelect: (id: string) => void
   onRollback: (id: string) => void
-  showNotif: (text: string, type?: 'normal' | 'acc') => void
 }
 
-function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, onRollback, showNotif }: SaveDetailProps) {
+function SaveDetail({ save, diffs, diffsLoading, onRollback }: SaveDetailProps) {
   const totalAdd = diffs.reduce((a, d) => a + d.add, 0)
   const totalRem = diffs.reduce((a, d) => a + d.rem, 0)
 
@@ -440,11 +416,9 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
           <div className="save-headline">{save.name}</div>
           <div className="save-headline-meta">
             {new Date(save.time).toLocaleString('zh-CN')} · {save.delta}
-            <br />{save.id.slice(0, 8)}
           </div>
         </div>
         <div className="main-actions">
-          <button className="btn btn-ghost" onClick={() => showNotif('正在对比差异…', 'acc')}>对比差异</button>
           <button className="btn btn-accent" onClick={() => onRollback(save.id)}>↩ 回滚到此</button>
         </div>
       </div>
@@ -495,28 +469,6 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header"><span className="card-title">存档时间线</span></div>
-          <div className="card-body">
-            <div className="timeline-viz">
-              {[...saves].reverse().map((s, i) => {
-                const isActive = s.id === selectedId
-                return (
-                  <div key={s.id} className={`tl-item${isActive ? ' active' : ''}`} onClick={() => onSelect(s.id)}>
-                    <div className="tl-line-wrap">
-                      {i > 0 && <div className="tl-connector" />}
-                      <div className={`tl-dot${isActive ? ' tl-dot-active' : ''}`} />
-                      {i < saves.length - 1 && <div className="tl-connector" />}
-                    </div>
-                    <div className="tl-label">#{String(saves.indexOf(s) + 1).padStart(2, '0')}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        <CloudCTA showNotif={showNotif} />
       </div>
     </>
   )
@@ -600,34 +552,7 @@ function SettingsPanel({
           </div>
         </div>
 
-        <CloudCTA showNotif={showNotif} />
       </div>
     </>
-  )
-}
-
-// ── CloudCTA ───────────────────────────────────────────────────────────────
-
-function CloudCTA({ showNotif }: { showNotif: (text: string, type?: 'normal' | 'acc') => void }) {
-  return (
-    <div className="cloud-cta">
-      <div className="cloud-icon">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M3.5 10.5A2.5 2.5 0 013.5 5.5a.5.5 0 010-.1A3 3 0 0110 6h.5a2 2 0 010 4H3.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-        </svg>
-      </div>
-      <div className="cloud-text">
-        <div className="cloud-title">开启云存档同步</div>
-        <div className="cloud-desc">跨设备访问你的所有存档，永不丢失，支持最多 365 天历史。</div>
-        <div className="cloud-features">
-          <div className="cloud-feat">跨设备同步</div>
-          <div className="cloud-feat">365 天历史</div>
-          <div className="cloud-feat">加密存储</div>
-        </div>
-      </div>
-      <button className="btn btn-accent" style={{ flexShrink: 0 }} onClick={() => showNotif('云存档即将上线，敬请期待！', 'acc')}>
-        升级 Pro
-      </button>
-    </div>
   )
 }
