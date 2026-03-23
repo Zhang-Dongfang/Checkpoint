@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "checkpoint",
+  "productName": "Checkpoint",
   "version": "0.1.0",
   "identifier": "app.checkpoint.desktop",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "SavePoint — 版本管理器",
+        "title": "Checkpoint",
         "width": 1100,
         "height": 720,
         "minWidth": 800,
