@@ -45,11 +45,14 @@ function formatTime(ts: number): string {
 
 function groupByDate(saves: SaveInfo[]): Record<string, SaveInfo[]> {
   const groups: Record<string, SaveInfo[]> = {}
+  const now = new Date()
+  const todayStr = now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = yesterday.toDateString()
   saves.forEach(s => {
-    const diff = Date.now() - s.time
-    const label = diff < 1000 * 3600 * 24 ? '今天'
-      : diff < 1000 * 3600 * 48 ? '昨天'
-        : '更早'
+    const d = new Date(s.time).toDateString()
+    const label = d === todayStr ? '今天' : d === yesterdayStr ? '昨天' : '更早'
     if (!groups[label]) groups[label] = []
     groups[label].push(s)
   })
@@ -138,6 +141,8 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saveDesc, setSaveDesc] = useState('')
+
+  const [confirmModal, setConfirmModal] = useState<{ text: string; onConfirm: () => void } | null>(null)
 
   const [notif, setNotif] = useState<{ text: string; type: 'normal' | 'acc'; show: boolean }>({
     text: '', type: 'normal', show: false,
@@ -312,17 +317,40 @@ export default function App() {
     }
   }
 
-  const rollback = async (id: string) => {
+  const rollback = (id: string) => {
     const s = saves.find(x => x.id === id)
     if (!s) return
-    if (!confirm(`确定要回滚到「${s.name}」吗？\n\n当前工作区的未存档修改将被覆盖。`)) return
-    showNotif('正在回滚…', 'acc')
-    try {
-      await invoke('rollback_to', { projectPath, saveId: id })
-      showNotif(`已回滚到：${s.name}（文件已恢复，可创建新存档保存当前状态）`)
-    } catch (e) {
-      showNotif('回滚失败：' + String(e), 'acc')
-    }
+    setConfirmModal({
+      text: `加载「${s.name}」？当前未存档的修改将被覆盖。`,
+      onConfirm: async () => {
+        showNotif('正在加载…', 'acc')
+        try {
+          await invoke('rollback_to', { projectPath, saveId: id })
+          showNotif(`已加载：${s.name}`)
+        } catch (e) {
+          showNotif('加载失败：' + String(e), 'acc')
+        }
+      },
+    })
+  }
+
+  const deleteSave = (id: string) => {
+    const s = saves.find(x => x.id === id)
+    if (!s) return
+    setConfirmModal({
+      text: `删除「${s.name}」？此操作不可撤销。`,
+      onConfirm: async () => {
+        try {
+          await invoke('delete_save', { projectPath, saveId: id })
+          const result = await invoke<SaveInfo[]>('get_saves', { projectPath })
+          setSaves(result)
+          if (selectedId === id) setSelectedId(result[0]?.id ?? null)
+          showNotif('存档已删除')
+        } catch (e) {
+          showNotif('删除失败：' + String(e), 'acc')
+        }
+      },
+    })
   }
 
   // ── Welcome screen ───────────────────────────────────────────────────────
@@ -354,7 +382,7 @@ export default function App() {
             </svg>
           </div>
           <div className="welcome-title">欢迎使用 SavePoint</div>
-          <div className="welcome-sub">选择一个 git 项目文件夹开始使用</div>
+          <div className="welcome-sub">选择一个项目文件夹开始使用</div>
           <button className="btn btn-accent" onClick={pickFolder}>选择项目文件夹</button>
         </div>
       </div>
@@ -434,6 +462,15 @@ export default function App() {
                         <div className="save-title">{s.name}</div>
                         <div className="save-time">{formatTime(s.time)}</div>
                       </div>
+                      <button
+                        className="save-delete-btn"
+                        title="删除此存档"
+                        onClick={e => { e.stopPropagation(); deleteSave(s.id) }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        </svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -543,6 +580,27 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      {confirmModal && (
+        <div className="modal-overlay open" onClick={e => { if (e.target === e.currentTarget) setConfirmModal(null) }}>
+          <div className="modal">
+            <div className="modal-title">确认操作</div>
+            <div className="modal-divider" />
+            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.6, fontFamily: 'var(--mono)' }}>
+              {confirmModal.text}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setConfirmModal(null)}>取消</button>
+              <button
+                className="btn btn-accent"
+                style={{ background: 'rgba(248,113,113,0.15)', color: 'rgba(248,113,113,0.9)', border: '1px solid rgba(248,113,113,0.2)' }}
+                onClick={() => { setConfirmModal(null); confirmModal.onConfirm() }}
+              >确认</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notification */}
       <div className={`notif${notif.show ? ' show' : ''}`}>
@@ -679,9 +737,7 @@ function SettingsPanel({
   const commitCustom = () => {
     const p = customInput.trim()
     if (!p) return
-    // If user typed just a prefix without wildcard, append *
-    const pattern = p.includes('*') || p.includes('/') ? p : p + '*'
-    onBlockFile(pattern)
+    onBlockFile(p)
     setCustomInput('')
     setShowCustom(false)
   }
@@ -788,7 +844,7 @@ function SettingsPanel({
                   <input
                     ref={customRef}
                     className="custom-pattern-input"
-                    placeholder="前缀如 ~$ 或完整规则如 *.log"
+                    placeholder="如 *.log、env、docs/drafts"
                     value={customInput}
                     onChange={e => setCustomInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') commitCustom(); if (e.key === 'Escape') { setShowCustom(false); setCustomInput('') } }}

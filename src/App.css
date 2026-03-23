@@ -274,6 +274,24 @@ body {
 }
 .save-delta { font-size: 11px; font-family: var(--mono); color: var(--text3); flex-shrink: 0; }
 
+.save-delete-btn {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity .15s, color .15s, background .15s;
+  -webkit-app-region: no-drag;
+}
+.save-item:hover .save-delete-btn { opacity: 1; }
+.save-delete-btn:hover { color: rgba(248,113,113,0.8); background: rgba(248,113,113,0.08); }
+
 .sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--line); }
 
 .autosave-badge {

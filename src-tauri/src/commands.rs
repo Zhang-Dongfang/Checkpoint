@@ -530,6 +530,80 @@ pub fn get_diff(project_path: String, save_id: String) -> Result<Vec<DiffFile>, 
 }
 
 #[tauri::command]
+pub fn delete_save(project_path: String, save_id: String) -> Result<(), String> {
+    let repo = open_shadow(&project_path)?;
+
+    let head_ref = repo.head().map_err(|e| e.to_string())?;
+    let head_oid = head_ref.target().ok_or("HEAD has no target")?;
+    let head_is_branch = head_ref.is_branch();
+    let head_branch_name = if head_is_branch {
+        head_ref.name().map(|s| s.to_string())
+    } else {
+        None
+    };
+    drop(head_ref);
+
+    // Collect full chain from HEAD, newest first
+    let mut walk = repo.revwalk().map_err(|e| e.to_string())?;
+    walk.set_sorting(Sort::TIME).map_err(|e| e.to_string())?;
+    walk.push(head_oid).map_err(|e| e.to_string())?;
+    let all_oids: Vec<git2::Oid> = walk
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    let target_oid = git2::Oid::from_str(&save_id).map_err(|e| e.to_string())?;
+    let pos = all_oids
+        .iter()
+        .position(|&o| o == target_oid)
+        .ok_or_else(|| "存档不存在".to_string())?;
+
+    if all_oids.len() == 1 {
+        return Err("无法删除唯一的存档".to_string());
+    }
+
+    // Commits newer than target (indices 0..pos), newest first → rebuild oldest-first
+    let newer: Vec<git2::Oid> = all_oids[..pos].to_vec();
+    // The commit just older than target becomes the new base
+    let new_base: Option<git2::Oid> = all_oids.get(pos + 1).copied();
+
+    let mut current_parent_oid: Option<git2::Oid> = new_base;
+    for &old_oid in newer.iter().rev() {
+        let old_commit = repo.find_commit(old_oid).map_err(|e| e.to_string())?;
+        let tree = repo.find_tree(old_commit.tree_id()).map_err(|e| e.to_string())?;
+        let msg = old_commit.message().unwrap_or("").to_string();
+        let author_time = old_commit.author().when();
+        let committer_time = old_commit.committer().when();
+        let author_sig = Signature::new("SavePoint", "savepoint@local", &author_time)
+            .map_err(|e| e.to_string())?;
+        let committer_sig = Signature::new("SavePoint", "savepoint@local", &committer_time)
+            .map_err(|e| e.to_string())?;
+
+        let parents: Vec<git2::Commit> = match current_parent_oid {
+            Some(p) => vec![repo.find_commit(p).map_err(|e| e.to_string())?],
+            None => vec![],
+        };
+        let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+        let new_oid = repo
+            .commit(None, &author_sig, &committer_sig, &msg, &tree, &parent_refs)
+            .map_err(|e| e.to_string())?;
+        current_parent_oid = Some(new_oid);
+    }
+
+    let new_head_oid = current_parent_oid.ok_or("计算新 HEAD 失败")?;
+
+    if let Some(branch_name) = head_branch_name {
+        repo.find_reference(&branch_name)
+            .map_err(|e| e.to_string())?
+            .set_target(new_head_oid, "delete_save")
+            .map_err(|e| e.to_string())?;
+    } else {
+        repo.set_head_detached(new_head_oid).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn rollback_to(project_path: String, save_id: String) -> Result<(), String> {
     let repo = open_shadow(&project_path)?;
 

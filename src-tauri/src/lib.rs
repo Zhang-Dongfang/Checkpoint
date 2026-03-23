@@ -18,6 +18,7 @@ pub fn run() {
             commands::auto_save,
             commands::get_diff,
             commands::rollback_to,
+            commands::delete_save,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
