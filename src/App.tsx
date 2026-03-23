@@ -548,7 +548,6 @@ function SettingsPanel({
       <div className="main-header">
         <div>
           <div className="save-headline">设置</div>
-          <div className="save-headline-meta">自动存档与偏好配置</div>
         </div>
       </div>
       <div className="main-body">
