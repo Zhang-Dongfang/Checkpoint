@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { check } from '@tauri-apps/plugin-updater'
+import { relaunch } from '@tauri-apps/plugin-process'
 import './App.css'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -141,6 +143,24 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saveDesc, setSaveDesc] = useState('')
+
+  const [updateInfo, setUpdateInfo] = useState<{ version: string; install: () => Promise<void> } | null>(null)
+  const [updateInstalling, setUpdateInstalling] = useState(false)
+
+  useEffect(() => {
+    check().then(update => {
+      if (update?.available) {
+        setUpdateInfo({
+          version: update.version,
+          install: async () => {
+            setUpdateInstalling(true)
+            await update.downloadAndInstall()
+            await relaunch()
+          },
+        })
+      }
+    }).catch(() => { /* 静默失败，不影响正常使用 */ })
+  }, [])
 
   const [confirmModal, setConfirmModal] = useState<{ text: string; onConfirm: () => void } | null>(null)
 
@@ -581,6 +601,25 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Update Banner */}
+      {updateInfo && (
+        <div className="update-banner">
+          <span className="update-banner-text">发现新版本 <strong>v{updateInfo.version}</strong></span>
+          <button
+            className="update-banner-btn"
+            disabled={updateInstalling}
+            onClick={updateInfo.install}
+          >
+            {updateInstalling ? '安装中…' : '立即更新'}
+          </button>
+          <button className="update-banner-dismiss" onClick={() => setUpdateInfo(null)}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Confirm Modal */}
       {confirmModal && (

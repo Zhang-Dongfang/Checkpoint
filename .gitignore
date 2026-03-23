@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri
+src-tauri/target/
+
+# Keys & certs (防止误放入项目)
+*.key
+*.pem
+*.p12
+*.pfx
