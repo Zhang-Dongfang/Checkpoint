@@ -94,7 +94,7 @@ export default function App() {
       const { getCurrentWindow } = await import('@tauri-apps/api/window')
       const { LogicalSize } = await import('@tauri-apps/api/dpi')
       const w = getCurrentWindow()
-      const phys = await w.outerSize()
+      const phys = await w.innerSize()
       const factor = await w.scaleFactor()
       const logH = Math.round(phys.height / factor)
       if (!mainCollapsed) {
