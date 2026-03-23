@@ -138,6 +138,28 @@ fn sync_to_shadow(project_path: &str, shadow_root: &Path, blocked: &HashSet<Stri
     copy_filtered(Path::new(project_path), shadow_root, blocked, "")
 }
 
+/// Match a name/path against a blocked pattern.
+/// Supports simple `*` wildcard (e.g. `~$*`, `*.tmp`).
+/// Patterns without `*` are matched as exact relative paths or exact names.
+fn matches_blocked(rel: &str, name: &str, blocked: &HashSet<String>) -> bool {
+    if blocked.contains(rel) {
+        return true;
+    }
+    for pat in blocked {
+        if let Some(star) = pat.find('*') {
+            let prefix = &pat[..star];
+            let suffix = &pat[star + 1..];
+            // Match against the file/dir name (last path component)
+            if name.starts_with(prefix) && name.ends_with(suffix)
+                && name.len() >= prefix.len() + suffix.len()
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: &str) -> io::Result<()> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
@@ -153,7 +175,7 @@ fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: 
             if is_ignored(&name_str, true) {
                 continue;
             }
-            if blocked.contains(&rel) {
+            if matches_blocked(&rel, &name_str, blocked) {
                 continue;
             }
             let sub = dst.join(&name);
@@ -163,7 +185,7 @@ fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: 
             if is_ignored(&name_str, false) {
                 continue;
             }
-            if blocked.contains(&rel) {
+            if matches_blocked(&rel, &name_str, blocked) {
                 continue;
             }
             if entry.metadata()?.len() > MAX_FILE_BYTES {

@@ -146,7 +146,7 @@ export default function App() {
   const nameInputRef = useRef<HTMLInputElement>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Always-fresh callback ref so the interval doesn't capture stale closures
-  const autoSaveCallbackRef = useRef<() => void>(() => {})
+  const autoSaveCallbackRef = useRef<() => void>(() => { })
 
   // Persist selected id
   useEffect(() => {
@@ -203,11 +203,19 @@ export default function App() {
     if (modalOpen) setTimeout(() => nameInputRef.current?.focus(), 100)
   }, [modalOpen])
 
+  const DEFAULT_BLOCKED = [
+    '~$*',        // Office 临时文件
+    '*.tmp',      // 通用临时文件
+    '*.~*',       // 部分编辑器备份
+    'Thumbs.db',  // Windows 缩略图缓存
+    '.DS_Store',  // macOS 目录元数据
+  ]
+
   // Load blocked files per project
   useEffect(() => {
     if (!projectPath) { setBlockedFiles([]); return }
     const stored = localStorage.getItem(blockedKey(projectPath))
-    setBlockedFiles(stored ? JSON.parse(stored) : [])
+    setBlockedFiles(stored ? JSON.parse(stored) : DEFAULT_BLOCKED)
   }, [projectPath])
 
   // Persist blocked files when they change
@@ -663,7 +671,23 @@ function SettingsPanel({
   onBlockFile: (file: string) => void
   onUnblockFile: (file: string) => void
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+  const [showCustom, setShowCustom] = useState(false)
+  const customRef = useRef<HTMLInputElement>(null)
+
+  const commitCustom = () => {
+    const p = customInput.trim()
+    if (!p) return
+    // If user typed just a prefix without wildcard, append *
+    const pattern = p.includes('*') || p.includes('/') ? p : p + '*'
+    onBlockFile(pattern)
+    setCustomInput('')
+    setShowCustom(false)
+  }
+
   const pickBlocked = async (directory: boolean) => {
+    setPickerOpen(false)
     const selected = await openDialog({
       multiple: true,
       directory,
@@ -695,6 +719,89 @@ function SettingsPanel({
                 <div className="setting-sub">当前监听路径</div>
               </div>
               <button className="btn btn-ghost" onClick={onPickFolder}>更改</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">屏蔽文件</span>
+            {blockedFiles.length > 0 && (
+              <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
+                {blockedFiles.length} 个
+              </span>
+            )}
+          </div>
+          <div className="card-body">
+            <div className="setting-sub" style={{ marginBottom: 12 }}>
+              屏蔽的文件不会被存档追踪，对当前项目生效
+            </div>
+            {blockedFiles.length > 0 && (
+              <div className="blocked-list">
+                {blockedFiles.map(f => (
+                  <div className="blocked-row" key={f}>
+                    <span className="blocked-path">{f}</span>
+                    <button className="blocked-remove" onClick={() => onUnblockFile(f)} title="取消屏蔽">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+              <div style={{ position: 'relative' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => { setPickerOpen(o => !o); setShowCustom(false) }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                  添加屏蔽…
+                </button>
+                {pickerOpen && (
+                  <div className="pick-dropdown">
+                    <button className="pick-option" onClick={() => pickBlocked(false)}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <rect x="1" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                        <path d="M1 5h10" stroke="currentColor" strokeWidth="1.3" />
+                      </svg>
+                      选择文件
+                    </button>
+                    <button className="pick-option" onClick={() => pickBlocked(true)}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 4h4l1.5-2H11a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.3" />
+                      </svg>
+                      选择文件夹
+                    </button>
+                    <div className="pick-divider" />
+                    <button className="pick-option" onClick={() => { setPickerOpen(false); setShowCustom(true); setTimeout(() => customRef.current?.focus(), 50) }}>
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 6h10M7 2l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      自定义规则…
+                    </button>
+                  </div>
+                )}
+              </div>
+              {showCustom && (
+                <div className="custom-pattern-row">
+                  <input
+                    ref={customRef}
+                    className="custom-pattern-input"
+                    placeholder="前缀如 ~$ 或完整规则如 *.log"
+                    value={customInput}
+                    onChange={e => setCustomInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') commitCustom(); if (e.key === 'Escape') { setShowCustom(false); setCustomInput('') } }}
+                    spellCheck={false}
+                  />
+                  <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '5px 10px' }} onClick={commitCustom} disabled={!customInput.trim()}>
+                    确认
+                  </button>
+                  <button className="btn btn-ghost" style={{ fontSize: '12px', padding: '5px 10px' }} onClick={() => { setShowCustom(false); setCustomInput('') }}>
+                    取消
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -756,49 +863,7 @@ function SettingsPanel({
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">屏蔽文件</span>
-            {blockedFiles.length > 0 && (
-              <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
-                {blockedFiles.length} 个
-              </span>
-            )}
-          </div>
-          <div className="card-body">
-            <div className="setting-sub" style={{ marginBottom: 12 }}>
-              屏蔽的文件不会被存档追踪，对当前项目生效
-            </div>
-            {blockedFiles.length > 0 && (
-              <div className="blocked-list">
-                {blockedFiles.map(f => (
-                  <div className="blocked-row" key={f}>
-                    <span className="blocked-path">{f}</span>
-                    <button className="blocked-remove" onClick={() => onUnblockFile(f)} title="取消屏蔽">
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => pickBlocked(false)}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-                选择文件…
-              </button>
-              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => pickBlocked(true)}>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-                选择文件夹…
-              </button>
-            </div>
-          </div>
-        </div>
+
 
         <div className="card">
           <div className="card-header"><span className="card-title">关于</span></div>
