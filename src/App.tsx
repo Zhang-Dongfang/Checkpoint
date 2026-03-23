@@ -273,16 +273,10 @@ export default function App() {
               存档
             </button>
             <button className="btn btn-ghost" title="设置" onClick={() => setSelectedId('settings')}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
               </svg>
-            </button>
-            <button className="btn btn-ghost theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? '切换亮色' : '切换暗色'}>
-              {theme === 'dark'
-                ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.8" stroke="currentColor" strokeWidth="1.4"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M3 3l1.1 1.1M9.9 9.9L11 11M3 11l1.1-1.1M9.9 4.1L11 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
-                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 8A6 6 0 016 2a6 6 0 100 10 6 6 0 006-4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
-              }
             </button>
           </div>
 
@@ -329,7 +323,7 @@ export default function App() {
         {/* Main panel */}
         <div className="main">
           {selectedId === 'settings' ? (
-            <SettingsPanel showNotif={showNotif} projectPath={projectPath} onPickFolder={pickFolder} />
+            <SettingsPanel showNotif={showNotif} projectPath={projectPath} onPickFolder={pickFolder} theme={theme} toggleTheme={toggleTheme} />
           ) : currentSave ? (
             <SaveDetail
               save={currentSave}
@@ -480,10 +474,14 @@ function SettingsPanel({
   showNotif,
   projectPath,
   onPickFolder,
+  theme,
+  toggleTheme,
 }: {
   showNotif: (text: string, type?: 'normal' | 'acc') => void
   projectPath: string
   onPickFolder: () => void
+  theme: 'dark' | 'light'
+  toggleTheme: () => void
 }) {
   return (
     <>
@@ -530,6 +528,22 @@ function SettingsPanel({
                   <option value="120">2 小时</option>
                 </select>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><span className="card-title">外观</span></div>
+          <div className="card-body">
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">深色模式</div>
+                <div className="setting-sub">{theme === 'dark' ? '当前：深色' : '当前：浅色'}</div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
+                <div className="toggle-slider" />
+              </label>
             </div>
           </div>
         </div>
