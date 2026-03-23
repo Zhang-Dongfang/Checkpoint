@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SavePoint — 版本管理器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0f11;
+  --bg2: #16181c;
+  --bg3: #1e2128;
+  --bg4: #252830;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8b8fa8;
+  --text3: #4a4d60;
+  --accent: #7c6af7;
+  --accent2: #5b51d8;
+  --accent-glow: rgba(124,106,247,0.15);
+  --green: #3ecf8e;
+  --green-bg: rgba(62,207,142,0.08);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.08);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.08);
+  --blue: #60a5fa;
+  --blue-bg: rgba(96,165,250,0.08);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Titlebar */
+.titlebar {
+  height: 44px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.titlebar-dots { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+.dot { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; transition: opacity .15s; }
+.dot:hover { opacity: .75; }
+.dot-r { background: #ff5f57; }
+.dot-y { background: #febc2e; }
+.dot-g { background: #28c840; }
+.titlebar-title { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: .04em; margin: 0 auto; }
+.titlebar-badge { font-family: var(--mono); font-size: 10px; color: var(--accent); background: var(--accent-glow); padding: 2px 8px; border-radius: 20px; border: 1px solid rgba(124,106,247,.2); }
+
+/* Layout */
+.app { display: grid; grid-template-columns: 280px 1fr; flex: 1; overflow: hidden; height: calc(100vh - 44px); }
+
+/* Sidebar */
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); }
+.project-selector { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg3); border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
+.project-selector:hover { border-color: var(--border2); }
+.project-icon { width: 28px; height: 28px; border-radius: 6px; background: var(--accent-glow); border: 1px solid rgba(124,106,247,.3); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.project-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.project-sub { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.chevron { margin-left: auto; color: var(--text3); font-size: 12px; }
+
+.sidebar-toolbar { padding: 12px 16px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: all .15s; border: none; letter-spacing: .02em; }
+.btn-accent { background: var(--accent); color: #fff; flex: 1; justify-content: center; }
+.btn-accent:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(124,106,247,.35); }
+.btn-accent:active { transform: translateY(0); }
+.btn-ghost { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+.saves-list { flex: 1; overflow-y: auto; padding: 8px; }
+.saves-list::-webkit-scrollbar { width: 4px; }
+.saves-list::-webkit-scrollbar-track { background: transparent; }
+.saves-list::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+.date-group { margin-bottom: 4px; }
+.date-label { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; padding: 8px 8px 4px; font-family: var(--mono); }
+
+.save-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); cursor: pointer; transition: all .15s; border: 1px solid transparent; margin-bottom: 2px; position: relative; }
+.save-item:hover { background: var(--bg3); }
+.save-item.active { background: var(--accent-glow); border-color: rgba(124,106,247,.25); }
+.save-item.active .save-num { color: var(--accent); border-color: rgba(124,106,247,.3); }
+
+.save-num { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text3); background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.save-info { flex: 1; min-width: 0; }
+.save-title { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.save-meta-line { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.save-time { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.tag { font-size: 9px; font-weight: 600; letter-spacing: .04em; padding: 2px 6px; border-radius: 20px; text-transform: uppercase; }
+.tag-auto { background: var(--green-bg); color: var(--green); border: 1px solid rgba(62,207,142,.2); }
+.tag-manual { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(96,165,250,.2); }
+.tag-cloud { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,.2); }
+.save-delta { font-size: 10px; font-family: var(--mono); color: var(--text3); margin-left: auto; flex-shrink: 0; }
+
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+.storage-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.storage-label { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.storage-bar { flex: 1; height: 3px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+.storage-fill { height: 100%; width: 22%; background: var(--accent); border-radius: 2px; transition: width .4s; }
+.storage-pct { font-size: 11px; font-family: var(--mono); color: var(--text3); }
+
+/* Main panel */
+.main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.main-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
+.save-headline { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+.save-headline-meta { font-size: 12px; color: var(--text2); margin-top: 4px; font-family: var(--mono); }
+.main-actions { display: flex; gap: 8px; }
+.btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid rgba(248,113,113,.2); }
+.btn-danger:hover { background: rgba(248,113,113,.15); }
+
+.main-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.main-body::-webkit-scrollbar { width: 4px; }
+.main-body::-webkit-scrollbar-track { background: transparent; }
+.main-body::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--text2); letter-spacing: .07em; text-transform: uppercase; font-family: var(--mono); }
+.card-body { padding: 16px 18px; }
+
+/* Diff view */
+.diff-list { display: flex; flex-direction: column; gap: 4px; }
+.diff-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg3); font-family: var(--mono); font-size: 12px; }
+.diff-icon { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.diff-icon-add { background: var(--green-bg); color: var(--green); }
+.diff-icon-mod { background: var(--amber-bg); color: var(--amber); }
+.diff-icon-del { background: var(--red-bg); color: var(--red); }
+.diff-filename { color: var(--text); flex: 1; }
+.diff-stats { display: flex; gap: 8px; margin-left: auto; }
+.diff-add { color: var(--green); }
+.diff-rem { color: var(--red); }
+
+/* Timeline viz */
+.timeline-viz { display: flex; gap: 0; overflow-x: auto; padding: 4px 0 8px; }
+.timeline-viz::-webkit-scrollbar { height: 3px; }
+.timeline-viz::-webkit-scrollbar-track { background: transparent; }
+.timeline-viz::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+.tl-item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 60px; cursor: pointer; }
+.tl-item:not(:last-child) { flex: 1; }
+.tl-line-wrap { display: flex; align-items: center; width: 100%; }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bg3); flex-shrink: 0; transition: all .15s; }
+.tl-dot-active { border-color: var(--accent) !important; background: var(--accent) !important; box-shadow: 0 0 0 4px var(--accent-glow); }
+.tl-connector { flex: 1; height: 1px; background: var(--border); }
+.tl-label { font-size: 10px; font-family: var(--mono); color: var(--text3); text-align: center; }
+.tl-item.active .tl-label { color: var(--accent); }
+
+/* Settings */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg3); border-radius: 8px; }
+.setting-label { font-size: 12px; color: var(--text); font-weight: 500; }
+.setting-sub { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-top: 2px; }
+.setting-control select { background: var(--bg4); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-family: var(--sans); cursor: pointer; outline: none; }
+.setting-control select:focus { border-color: rgba(124,106,247,.4); }
+
+/* Toggle */
+.toggle { position: relative; width: 34px; height: 18px; cursor: pointer; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--bg4); border-radius: 9px; transition: .2s; border: 1px solid var(--border); }
+.toggle-slider:before { content: ''; position: absolute; width: 12px; height: 12px; left: 2px; top: 2px; background: var(--text3); border-radius: 50%; transition: .2s; }
+.toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(16px); background: #fff; }
+
+/* Cloud CTA */
+.cloud-cta { background: linear-gradient(135deg, rgba(124,106,247,.12) 0%, rgba(60,130,247,.08) 100%); border: 1px solid rgba(124,106,247,.2); border-radius: var(--radius-lg); padding: 20px; display: flex; align-items: center; gap: 16px; }
+.cloud-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--accent-glow); border: 1px solid rgba(124,106,247,.25); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.cloud-text { flex: 1; }
+.cloud-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.cloud-desc { font-size: 12px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+.cloud-features { display: flex; gap: 12px; margin-top: 8px; }
+.cloud-feat { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+.cloud-feat::before { content: '✓'; color: var(--accent); font-weight: 700; }
+
+/* Empty state */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); }
+.empty-icon { font-size: 40px; opacity: .4; }
+.empty-text { font-size: 14px; font-weight: 500; }
+.empty-sub { font-size: 12px; font-family: var(--mono); }
+
+/* Modal overlay */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 24px; width: 400px; transform: translateY(10px); transition: transform .2s; }
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.modal-sub { font-size: 12px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+.modal-input-wrap { margin-bottom: 16px; }
+.modal-label { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; font-family: var(--mono); }
+.modal-input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--text); font-family: var(--sans); outline: none; transition: border-color .15s; }
+.modal-input:focus { border-color: rgba(124,106,247,.5); }
+.modal-input::placeholder { color: var(--text3); }
+.modal-textarea { resize: none; height: 80px; font-family: var(--mono); font-size: 12px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+/* Notification */
+.notif { position: fixed; bottom: 20px; right: 20px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 10px; transform: translateY(60px); opacity: 0; transition: all .25s; z-index: 200; }
+.notif.show { transform: translateY(0); opacity: 1; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.notif-dot-acc { background: var(--accent); }
+
+/* Status bar */
+.statusbar { height: 26px; background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 16px; flex-shrink: 0; }
+.status-item { font-size: 11px; font-family: var(--mono); color: var(--text3); display: flex; align-items: center; gap: 5px; }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+/* Animations */
+@keyframes fadein { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.save-item { animation: fadein .2s ease both; }
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <div class="titlebar-dots">
+    <div class="dot dot-r"></div>
+    <div class="dot dot-y"></div>
+    <div class="dot dot-g"></div>
+  </div>
+  <div class="titlebar-title">SavePoint</div>
+  <div class="titlebar-badge">v0.1.0</div>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="project-selector" onclick="showNotif('切换项目功能即将上线', 'acc')">
+        <div class="project-icon">⚡</div>
+        <div>
+          <div class="project-name">我的项目</div>
+          <div class="project-sub">~/Documents/my-project</div>
+        </div>
+        <div class="chevron">⌄</div>
+      </div>
+    </div>
+    <div class="sidebar-toolbar">
+      <button class="btn btn-accent" onclick="openSaveModal()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        存档
+      </button>
+      <button class="btn btn-ghost" title="设置" onclick="selectSave('settings')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="saves-list" id="saves-list"></div>
+    <div class="sidebar-footer">
+      <div class="storage-bar-wrap">
+        <span class="storage-label">本地</span>
+        <div class="storage-bar"><div class="storage-fill" id="storage-fill"></div></div>
+        <span class="storage-pct" id="storage-pct">3.1 KB</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main panel -->
+  <div class="main" id="main-panel"></div>
+</div>
+
+<!-- Status bar -->
+<div class="statusbar">
+  <div class="status-item"><div class="status-dot"></div>监听中</div>
+  <div class="status-item">自动存档：每 30 分钟</div>
+  <div class="status-item" id="status-time"></div>
+</div>
+
+<!-- Save Modal -->
+<div class="modal-overlay" id="save-modal" onclick="if(event.target===this)closeSaveModal()">
+  <div class="modal">
+    <div class="modal-title">创建新存档</div>
+    <div class="modal-sub">为当前状态创建一个存档点，方便随时回滚。</div>
+    <div class="modal-input-wrap">
+      <div class="modal-label">存档名称</div>
+      <input class="modal-input" id="save-name-input" placeholder="例如：完成了用户登录功能" maxlength="40" />
+    </div>
+    <div class="modal-input-wrap">
+      <div class="modal-label">备注（可选）</div>
+      <textarea class="modal-input modal-textarea" id="save-desc-input" placeholder="描述一下这次做了什么改动…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSaveModal()">取消</button>
+      <button class="btn btn-accent" onclick="createSave()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        确认存档
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notif" id="notif">
+  <div class="notif-dot" id="notif-dot"></div>
+  <span id="notif-text"></span>
+</div>
+
+<script>
+const SAVES_KEY = 'savepoint_saves';
+const SELECTED_KEY = 'savepoint_selected';
+
+const fakeDiffs = [
+  [
+    { type:'add', file:'src/pages/login.tsx', add:142, rem:0 },
+    { type:'add', file:'src/styles/login.css', add:38, rem:0 },
+    { type:'mod', file:'src/router.tsx', add:3, rem:1 },
+  ],
+  [
+    { type:'mod', file:'src/App.tsx', add:5, rem:2 },
+    { type:'mod', file:'package.json', add:2, rem:0 },
+  ],
+  [
+    { type:'add', file:'src/components/Button.tsx', add:56, rem:0 },
+    { type:'add', file:'src/components/Input.tsx', add:44, rem:0 },
+    { type:'del', file:'src/old-button.js', add:0, rem:31 },
+  ],
+  [
+    { type:'mod', file:'README.md', add:18, rem:4 },
+  ],
+  [],
+];
+
+function loadSaves() {
+  try { return JSON.parse(localStorage.getItem(SAVES_KEY)) || getDefaultSaves(); }
+  catch { return getDefaultSaves(); }
+}
+function saveSaves(arr) { localStorage.setItem(SAVES_KEY, JSON.stringify(arr)); }
+function getSelected() { return localStorage.getItem(SELECTED_KEY) || null; }
+function setSelected(id) { localStorage.setItem(SELECTED_KEY, id); }
+
+function getDefaultSaves() {
+  const now = Date.now();
+  return [
+    { id:'s1', name:'添加登录页', desc:'完成了用户登录和注册界面，接入了路由', type:'manual', time: now - 1000*60*10, delta:'+2.3 KB', diffIdx:0, cloud:false },
+    { id:'s2', name:'自动存档', desc:'', type:'auto', time: now - 1000*60*120, delta:'+0.8 KB', diffIdx:1, cloud:false },
+    { id:'s3', name:'重构组件库', desc:'抽离了 Button 和 Input 组件', type:'manual', time: now - 1000*3600*26, delta:'+1.2 KB', diffIdx:2, cloud:true },
+    { id:'s4', name:'更新文档', desc:'', type:'auto', time: now - 1000*3600*48, delta:'+0.4 KB', diffIdx:3, cloud:false },
+    { id:'s5', name:'初始存档', desc:'项目初始化', type:'manual', time: now - 1000*3600*72, delta:'全量', diffIdx:4, cloud:true },
+  ];
+}
+
+function formatTime(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff/60000);
+  if (m < 1) return '刚刚';
+  if (m < 60) return `${m} 分钟前`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h} 小时前`;
+  const d = Math.floor(h/24);
+  if (d === 1) return '昨天';
+  if (d < 7) return `${d} 天前`;
+  return new Date(ts).toLocaleDateString('zh-CN', {month:'short', day:'numeric'});
+}
+
+function groupByDate(saves) {
+  const groups = {};
+  saves.forEach(s => {
+    const diff = Date.now() - s.time;
+    let label;
+    if (diff < 1000*3600*24) label = '今天';
+    else if (diff < 1000*3600*48) label = '昨天';
+    else label = '更早';
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(s);
+  });
+  return groups;
+}
+
+function renderSidebar() {
+  const saves = loadSaves();
+  const selected = getSelected() || (saves[0] && saves[0].id);
+  const groups = groupByDate(saves);
+  const list = document.getElementById('saves-list');
+  list.innerHTML = '';
+
+  const order = ['今天','昨天','更早'];
+  order.forEach(label => {
+    if (!groups[label]) return;
+    const grp = document.createElement('div');
+    grp.className = 'date-group';
+    grp.innerHTML = `<div class="date-label">${label}</div>`;
+    groups[label].forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'save-item' + (s.id === selected ? ' active' : '');
+      el.style.animationDelay = (i*0.04)+'s';
+      const dotColor = s.type==='auto' ? 'var(--text3)' : (s.cloud ? 'var(--amber)' : 'var(--accent)');
+      el.innerHTML = `
+        <div class="save-num" style="${s.id===selected?'color:var(--accent);border-color:rgba(124,106,247,.3)':''}">${String(saves.indexOf(s)+1).padStart(2,'0')}</div>
+        <div class="save-info">
+          <div class="save-title">${escHtml(s.name)}</div>
+          <div class="save-meta-line">
+            <span class="save-time">${formatTime(s.time)}</span>
+            <span class="tag tag-${s.type}">${s.type==='auto'?'自动':'手动'}</span>
+            ${s.cloud ? '<span class="tag tag-cloud">云端</span>' : ''}
+          </div>
+        </div>
+        <div class="save-delta">${s.delta}</div>`;
+      el.onclick = () => selectSave(s.id);
+      grp.appendChild(el);
+    });
+    list.appendChild(grp);
+  });
+}
+
+function selectSave(id) {
+  setSelected(id);
+  renderSidebar();
+  renderMain();
+}
+
+function renderMain() {
+  const saves = loadSaves();
+  const id = getSelected();
+  const panel = document.getElementById('main-panel');
+
+  if (id === 'settings') {
+    panel.innerHTML = renderSettings();
+    return;
+  }
+
+  const save = saves.find(s => s.id === id) || saves[0];
+  if (!save) { panel.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">还没有存档</div><div class="empty-sub">点击"存档"按钮创建第一个</div></div>`; return; }
+
+  const diffs = fakeDiffs[save.diffIdx] || [];
+  const totalAdd = diffs.reduce((a,d) => a+d.add, 0);
+  const totalRem = diffs.reduce((a,d) => a+d.rem, 0);
+
+  panel.innerHTML = `
+    <div class="main-header">
+      <div>
+        <div class="save-headline">${escHtml(save.name)}</div>
+        <div class="save-headline-meta">${new Date(save.time).toLocaleString('zh-CN')} · ${save.type==='auto'?'自动存档':'手动存档'} · ${save.delta}</div>
+      </div>
+      <div class="main-actions">
+        <button class="btn btn-ghost" onclick="showNotif('正在对比差异…','acc')">对比差异</button>
+        <button class="btn btn-danger" onclick="deleteSave('${save.id}')">删除</button>
+        <button class="btn btn-accent" onclick="rollback('${save.id}')">↩ 回滚到此</button>
+      </div>
+    </div>
+    <div class="main-body">
+      ${save.desc ? `<div style="padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text2);line-height:1.6;">${escHtml(save.desc)}</div>` : ''}
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">变更文件</span>
+          <span style="font-size:11px;font-family:var(--mono);color:var(--text2);">${diffs.length} 个文件 <span style="color:var(--green)">+${totalAdd}</span> <span style="color:var(--red)">-${totalRem}</span></span>
+        </div>
+        <div class="card-body">
+          ${diffs.length ? `<div class="diff-list">${diffs.map(d=>`
+            <div class="diff-row">
+              <div class="diff-icon diff-icon-${d.type==='add'?'add':d.type==='del'?'del':'mod'}">${d.type==='add'?'+':d.type==='del'?'−':'~'}</div>
+              <div class="diff-filename">${escHtml(d.file)}</div>
+              <div class="diff-stats">
+                ${d.add?`<span class="diff-add">+${d.add}</span>`:''}
+                ${d.rem?`<span class="diff-rem">-${d.rem}</span>`:''}
+              </div>
+            </div>`).join('')}</div>` :
+            `<div style="text-align:center;padding:20px;color:var(--text3);font-size:12px;font-family:var(--mono);">这是初始全量存档</div>`}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">存档时间线</span></div>
+        <div class="card-body">
+          <div class="timeline-viz" id="timeline"></div>
+        </div>
+      </div>
+
+      <div class="cloud-cta">
+        <div class="cloud-icon">☁</div>
+        <div class="cloud-text">
+          <div class="cloud-title">开启云存档同步</div>
+          <div class="cloud-desc">跨设备访问你的所有存档，永不丢失，支持最多 365 天历史。</div>
+          <div class="cloud-features">
+            <div class="cloud-feat">跨设备同步</div>
+            <div class="cloud-feat">365 天历史</div>
+            <div class="cloud-feat">加密存储</div>
+          </div>
+        </div>
+        <button class="btn btn-accent" onclick="showNotif('云存档即将上线，敬请期待！','acc')" style="flex-shrink:0;">升级 Pro</button>
+      </div>
+    </div>`;
+
+  renderTimeline(save.id);
+}
+
+function renderTimeline(activeId) {
+  const saves = loadSaves();
+  const el = document.getElementById('timeline');
+  if (!el) return;
+  el.innerHTML = saves.slice().reverse().map((s, i) => {
+    const isActive = s.id === activeId;
+    const dotColor = isActive ? 'var(--accent)' : (s.type==='auto'?'var(--bg4)':'var(--text3)');
+    return `<div class="tl-item${isActive?' active':''}" onclick="selectSave('${s.id}')">
+      <div class="tl-line-wrap">
+        ${i > 0 ? '<div class="tl-connector"></div>' : ''}
+        <div class="tl-dot${isActive?' tl-dot-active':''}" style="background:${dotColor};border-color:${isActive?'var(--accent)':'var(--bg3)'}"></div>
+        ${i < saves.length-1 ? '<div class="tl-connector"></div>' : ''}
+      </div>
+      <div class="tl-label">#${String(saves.indexOf(s)+1).padStart(2,'0')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSettings() {
+  return `<div class="main-header"><div><div class="save-headline">设置</div><div class="save-headline-meta">自动存档与偏好配置</div></div></div>
+  <div class="main-body">
+    <div class="card">
+      <div class="card-header"><span class="card-title">自动存档</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="setting-row" style="grid-column:1/-1;">
+          <div><div class="setting-label">启用自动存档</div><div class="setting-sub">定时保存当前状态</div></div>
+          <label class="toggle"><input type="checkbox" checked onchange="showNotif(this.checked?'自动存档已开启':'自动存档已关闭')"><div class="toggle-slider"></div></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">存档间隔</div>
+          <div class="setting-control"><select onchange="showNotif('设置已保存')"><option>15 分钟</option><option selected>30 分钟</option><option>1 小时</option><option>2 小时</option></select></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">最多保留自动存档</div>
+          <div class="setting-control"><select onchange="showNotif('设置已保存')"><option>5 个</option><option selected>10 个</option><option>20 个</option><option>无限制</option></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">监听目录</span></div>
+      <div class="card-body">
+        <div class="setting-row">
+          <div><div class="setting-label">~/Documents/my-project</div><div class="setting-sub">当前监听路径</div></div>
+          <button class="btn btn-ghost" onclick="showNotif('请在 Tauri 版本中使用文件选择器')">更改</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">存储</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="setting-row">
+          <div><div class="setting-label">本地存档大小</div><div class="setting-sub">已用 3.1 KB / 无限制</div></div>
+          <button class="btn btn-ghost" onclick="showNotif('正在清理旧存档…')">清理旧存档</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">存储格式</div>
+          <div class="setting-control"><select onchange="showNotif('设置已保存')"><option selected>增量 diff（推荐）</option><option>全量快照</option></select></div>
+        </div>
+      </div>
+    </div>
+    <div class="cloud-cta">
+      <div class="cloud-icon">☁</div>
+      <div class="cloud-text">
+        <div class="cloud-title">云存档同步 — Pro 功能</div>
+        <div class="cloud-desc">跨设备实时同步，加密备份，365 天历史记录。开源免费版包含完整本地功能。</div>
+      </div>
+      <button class="btn btn-accent" onclick="showNotif('云存档即将上线，敬请期待！','acc')">了解 Pro</button>
+    </div>
+  </div>`;
+}
+
+function openSaveModal() {
+  document.getElementById('save-modal').classList.add('open');
+  setTimeout(() => document.getElementById('save-name-input').focus(), 100);
+}
+function closeSaveModal() {
+  document.getElementById('save-modal').classList.remove('open');
+  document.getElementById('save-name-input').value = '';
+  document.getElementById('save-desc-input').value = '';
+}
+
+function createSave() {
+  const name = document.getElementById('save-name-input').value.trim() || '手动存档';
+  const desc = document.getElementById('save-desc-input').value.trim();
+  const saves = loadSaves();
+  const newSave = {
+    id: 's' + Date.now(),
+    name,
+    desc,
+    type: 'manual',
+    time: Date.now(),
+    delta: '+' + (Math.random()*3+0.2).toFixed(1) + ' KB',
+    diffIdx: Math.floor(Math.random()*3),
+    cloud: false,
+  };
+  saves.unshift(newSave);
+  saveSaves(saves);
+  closeSaveModal();
+  setSelected(newSave.id);
+  renderSidebar();
+  renderMain();
+  showNotif('存档创建成功！');
+  updateStorage(saves);
+}
+
+function deleteSave(id) {
+  if (!confirm('确定要删除这个存档吗？此操作不可撤销。')) return;
+  let saves = loadSaves().filter(s => s.id !== id);
+  saveSaves(saves);
+  setSelected(saves[0]?.id || null);
+  renderSidebar();
+  renderMain();
+  showNotif('存档已删除');
+  updateStorage(saves);
+}
+
+function rollback(id) {
+  const saves = loadSaves();
+  const s = saves.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(`确定要回滚到「${s.name}」吗？当前未存档的更改将丢失。`)) return;
+  showNotif('正在回滚…', 'acc');
+  setTimeout(() => showNotif('已回滚到：' + s.name), 1200);
+}
+
+function updateStorage(saves) {
+  const kb = saves.reduce((a,_) => a + Math.random()*1.5+0.2, 0).toFixed(1);
+  document.getElementById('storage-pct').textContent = kb + ' KB';
+  const pct = Math.min(100, saves.length * 8);
+  document.getElementById('storage-fill').style.width = pct + '%';
+}
+
+function showNotif(text, type) {
+  const el = document.getElementById('notif');
+  const dot = document.getElementById('notif-dot');
+  document.getElementById('notif-text').textContent = text;
+  dot.className = 'notif-dot' + (type==='acc'?' notif-dot-acc':'');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateClock() {
+  const el = document.getElementById('status-time');
+  if (el) el.textContent = new Date().toLocaleTimeString('zh-CN');
+}
+
+// Keyboard shortcut: Cmd/Ctrl+S
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); openSaveModal(); }
+  if (e.key === 'Escape') closeSaveModal();
+});
+
+// Enter to confirm in modal
+document.getElementById('save-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') createSave();
+});
+
+// Init
+const saves = loadSaves();
+saveSaves(saves);
+if (!getSelected() && saves.length) setSelected(saves[0].id);
+renderSidebar();
+renderMain();
+updateStorage(saves);
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
