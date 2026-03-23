@@ -62,6 +62,15 @@ fn shadow_path(project_path: &str) -> PathBuf {
 fn open_or_init_shadow(project_path: &str) -> Result<Repository, String> {
     let path = shadow_path(project_path);
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
+    // Mark .savepoint as hidden on Windows
+    #[cfg(windows)]
+    {
+        let savepoint_dir = Path::new(project_path).join(".savepoint");
+        let _ = std::process::Command::new("attrib")
+            .arg("+h")
+            .arg(&savepoint_dir)
+            .output();
+    }
     Repository::init(&path).map_err(|e| e.to_string())
 }
 
