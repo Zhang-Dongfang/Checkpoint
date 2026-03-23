@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="230" fill="#0d0d0f"/>
+
+  <!-- Diamond: subtle fill -->
+  <path d="M512 168 L856 512 L512 856 L168 512 Z"
+        fill="rgba(232,232,232,0.04)"/>
+
+  <!-- Diamond: outer stroke -->
+  <path d="M512 168 L856 512 L512 856 L168 512 Z"
+        stroke="#e8e8e8" stroke-width="24" stroke-linejoin="round" opacity="0.75"/>
+
+  <!-- Center ring -->
+  <circle cx="512" cy="512" r="88" fill="none"
+          stroke="#e8e8e8" stroke-width="18" opacity="0.18"/>
+
+  <!-- Center dot: green (唯一的彩色，对应 autosave 状态点) -->
+  <circle cx="512" cy="512" r="40" fill="#3ecf8e"/>
+
+</svg>

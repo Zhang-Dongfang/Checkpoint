@@ -289,8 +289,9 @@ body {
   transition: opacity .15s, color .15s, background .15s;
   -webkit-app-region: no-drag;
 }
-.save-item:hover .save-delete-btn { opacity: 1; }
-.save-delete-btn:hover { color: rgba(248,113,113,0.8); background: rgba(248,113,113,0.08); }
+.save-item:hover .save-delete-btn:not(:disabled) { opacity: 1; }
+.save-delete-btn:hover:not(:disabled) { color: rgba(248,113,113,0.8); background: rgba(248,113,113,0.08); }
+.save-delete-btn:disabled { cursor: not-allowed; }
 
 .sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--line); }
 

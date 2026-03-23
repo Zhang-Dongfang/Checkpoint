@@ -197,7 +197,7 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); openModal() }
-      if (e.key === 'Escape') closeModal()
+      if (e.key === 'Escape') { closeModal(); setConfirmModal(null) }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
@@ -464,7 +464,8 @@ export default function App() {
                       </div>
                       <button
                         className="save-delete-btn"
-                        title="删除此存档"
+                        title={saves.length === 1 ? '至少保留一个存档' : '删除此存档'}
+                        disabled={saves.length === 1}
                         onClick={e => { e.stopPropagation(); deleteSave(s.id) }}
                       >
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
