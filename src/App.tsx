@@ -67,7 +67,6 @@ export default function App() {
     localStorage.getItem(SELECTED_KEY) || null
   )
   const [loading, setLoading] = useState(false)
-  const [repoError, setRepoError] = useState<string | null>(null)
 
   const [currentDiffs, setCurrentDiffs] = useState<DiffFile[]>([])
   const [diffsLoading, setDiffsLoading] = useState(false)
@@ -132,23 +131,15 @@ export default function App() {
 
   const loadSaves = async () => {
     setLoading(true)
-    setRepoError(null)
     try {
-      const isRepo = await invoke<boolean>('check_repo', { projectPath })
-      if (!isRepo) {
-        setRepoError('所选文件夹不是 git 仓库，请先运行 git init。')
-        setSaves([])
-        return
-      }
       const result = await invoke<SaveInfo[]>('get_saves', { projectPath })
       setSaves(result)
-      // Select first save if current selection is gone
       const ids = result.map(s => s.id)
       if (!selectedId || !ids.includes(selectedId)) {
         setSelectedId(result[0]?.id ?? null)
       }
     } catch (e) {
-      setRepoError(String(e))
+      showNotif(String(e), 'acc')
     } finally {
       setLoading(false)
     }
@@ -261,7 +252,7 @@ export default function App() {
           </div>
 
           <div className="sidebar-toolbar">
-            <button className="btn btn-accent" onClick={openModal} disabled={loading || !!repoError}>
+            <button className="btn btn-accent" onClick={openModal} disabled={loading}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
@@ -281,7 +272,7 @@ export default function App() {
                 加载中…
               </div>
             )}
-            {!loading && saves.length === 0 && !repoError && (
+            {!loading && saves.length === 0 && (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text3)', fontSize: '12px', fontFamily: 'var(--mono)' }}>
                 还没有存档
               </div>
@@ -326,12 +317,6 @@ export default function App() {
         <div className="main">
           {selectedId === 'settings' ? (
             <SettingsPanel showNotif={showNotif} projectPath={projectPath} onPickFolder={pickFolder} />
-          ) : repoError ? (
-            <div className="empty-state">
-              <div className="empty-icon">⚠️</div>
-              <div className="empty-text">无法访问仓库</div>
-              <div className="empty-sub">{repoError}</div>
-            </div>
           ) : currentSave ? (
             <SaveDetail
               save={currentSave}

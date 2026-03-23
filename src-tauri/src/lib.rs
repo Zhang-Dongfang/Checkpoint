@@ -6,10 +6,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            commands::check_repo,
             commands::get_saves,
-            commands::get_diff,
             commands::create_save,
+            commands::get_diff,
             commands::rollback_to,
         ])
         .run(tauri::generate_context!())
