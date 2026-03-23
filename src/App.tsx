@@ -86,6 +86,30 @@ export default function App() {
   )
   const [loading, setLoading] = useState(false)
 
+  const [mainCollapsed, setMainCollapsed] = useState(false)
+  const prevWidthRef = useRef<number>(900)
+
+  const toggleCollapse = async () => {
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window')
+      const { LogicalSize } = await import('@tauri-apps/api/dpi')
+      const w = getCurrentWindow()
+      const phys = await w.outerSize()
+      const factor = await w.scaleFactor()
+      const logH = Math.round(phys.height / factor)
+      if (!mainCollapsed) {
+        prevWidthRef.current = Math.round(phys.width / factor)
+        await w.setSize(new LogicalSize(340, logH)) // 272 CSS px × zoom 1.25
+        setMainCollapsed(true)
+      } else {
+        await w.setSize(new LogicalSize(prevWidthRef.current, logH))
+        setMainCollapsed(false)
+      }
+    } catch (e) {
+      showNotif('窗口调整失败：' + String(e), 'acc')
+    }
+  }
+
   const [currentDiffs, setCurrentDiffs] = useState<DiffFile[]>([])
   const [diffsLoading, setDiffsLoading] = useState(false)
 
@@ -255,7 +279,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="titlebar"><div className="titlebar-drag" /><WinControls /></div>
-      <div className="app">
+      <div className={`app${mainCollapsed ? ' main-collapsed' : ''}`}>
         {/* Sidebar */}
         <div className="sidebar">
           <div className="sidebar-top">
@@ -319,6 +343,20 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Divider collapse button */}
+        <button
+          className="sidebar-collapse-btn"
+          onClick={toggleCollapse}
+          title={mainCollapsed ? '展开详情面板' : '收起详情面板'}
+        >
+          <svg width="8" height="12" viewBox="0 0 8 12" fill="none">
+            {mainCollapsed
+              ? <path d="M2 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              : <path d="M6 2L2 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            }
+          </svg>
+        </button>
 
         {/* Main panel */}
         <div className="main">
