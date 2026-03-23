@@ -12,7 +12,15 @@
       "Read(//c/Users/windo/AppData/Local/Temp/claude/E--Checkpoint/0bd04e7b-fc21-47f4-9692-1e465575cfa8/tasks/**)",
       "Bash(node -e \"const p = require\\(''./node_modules/@tauri-apps/api/package.json''\\); console.log\\(p.version\\); console.log\\(Object.keys\\(p.exports || {}\\).filter\\(k=>k.includes\\(''process''\\)\\)\\)\")",
       "Bash(node -e \"const p = require\\(''''/e/Checkpoint/node_modules/@tauri-apps/api/package.json''''\\); console.log\\(JSON.stringify\\(Object.keys\\(p.exports||{}\\), null, 2\\)\\)\")",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(powershell.exe -Command \"[System.IO.File]::WriteAllText\\('E:\\\\Checkpoint\\\\release.ps1', [System.IO.File]::ReadAllText\\('E:\\\\Checkpoint\\\\release.ps1'\\), [System.Text.UTF8Encoding]::new\\(\\\\$false\\)\\); Write-Host 'done'\")",
+      "Bash(powershell.exe -File - << 'EOF'\n$utf8nobom = New-Object System.Text.UTF8Encoding $false\n$content = [System.IO.File]::ReadAllText\\('E:\\\\Checkpoint\\\\release.ps1'\\)\n[System.IO.File]::WriteAllText\\('E:\\\\Checkpoint\\\\release.ps1', $content, $utf8nobom\\)\nWrite-Host \"done\"\nEOF)",
+      "Bash(powershell.exe -Command \"Write-Host 'Saved.'\")",
+      "Bash(powershell.exe -Command \"Get-Content 'E:\\\\Checkpoint\\\\release.ps1' | Select-Object -First 5\")",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:news.ycombinator.com)",
+      "WebFetch(domain:hyperclay.com)"
     ]
   }
 }

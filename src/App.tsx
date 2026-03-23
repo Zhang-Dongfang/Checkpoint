@@ -30,6 +30,7 @@ const SELECTED_KEY = 'savepoint_selected'
 const THEME_KEY = 'savepoint_theme'
 const AUTO_SAVE_ENABLED_KEY = 'savepoint_autosave_enabled'
 const AUTO_SAVE_INTERVAL_KEY = 'savepoint_autosave_interval'
+const MAX_FILE_MB_KEY = 'savepoint_max_file_mb'
 const blockedKey = (path: string) => `savepoint_blocked_${path}`
 
 function formatTime(ts: number): string {
@@ -99,6 +100,9 @@ export default function App() {
   )
   const [autoSaveInterval, setAutoSaveInterval] = useState<number>(() =>
     parseInt(localStorage.getItem(AUTO_SAVE_INTERVAL_KEY) || '30', 10)
+  )
+  const [maxFileMb, setMaxFileMb] = useState<number>(() =>
+    parseInt(localStorage.getItem(MAX_FILE_MB_KEY) || '10', 10)
   )
 
   const [blockedFiles, setBlockedFiles] = useState<string[]>([])
@@ -187,11 +191,15 @@ export default function App() {
     localStorage.setItem(AUTO_SAVE_INTERVAL_KEY, String(autoSaveInterval))
   }, [autoSaveInterval])
 
+  useEffect(() => {
+    localStorage.setItem(MAX_FILE_MB_KEY, String(maxFileMb))
+  }, [maxFileMb])
+
   // Keep auto-save callback ref fresh (captures latest state without resetting the timer)
   autoSaveCallbackRef.current = async () => {
     if (!projectPath) return
     try {
-      const newHash = await invoke<string>('auto_save', { projectPath, blockedFiles })
+      const newHash = await invoke<string>('auto_save', { projectPath, blockedFiles, maxFileMb })
       const result = await invoke<SaveInfo[]>('get_saves', { projectPath })
       setSaves(result)
       setSelectedId(newHash)
@@ -326,6 +334,7 @@ export default function App() {
         name,
         desc: saveDesc.trim(),
         blockedFiles,
+        maxFileMb,
       })
       await loadSaves()
       setSelectedId(newHash)
@@ -542,6 +551,8 @@ export default function App() {
               blockedFiles={blockedFiles}
               onBlockFile={blockFile}
               onUnblockFile={unblockFile}
+              maxFileMb={maxFileMb}
+              onMaxFileMbChange={setMaxFileMb}
             />
           ) : currentSave ? (
             <SaveDetail
@@ -810,6 +821,8 @@ function SettingsPanel({
   blockedFiles,
   onBlockFile,
   onUnblockFile,
+  maxFileMb,
+  onMaxFileMbChange,
 }: {
   showNotif: (text: string, type?: 'normal' | 'acc') => void
   projectPath: string
@@ -823,6 +836,8 @@ function SettingsPanel({
   blockedFiles: string[]
   onBlockFile: (file: string) => void
   onUnblockFile: (file: string) => void
+  maxFileMb: number
+  onMaxFileMbChange: (mb: number) => void
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [customInput, setCustomInput] = useState('')
@@ -953,6 +968,33 @@ function SettingsPanel({
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><span className="card-title">文件大小上限</span></div>
+          <div className="card-body">
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">单文件上限</div>
+                <div className="setting-sub">超过此大小的文件将被跳过，0 表示不限制</div>
+              </div>
+              <div className="setting-control">
+                <select
+                  value={maxFileMb}
+                  onChange={e => {
+                    onMaxFileMbChange(parseInt(e.target.value, 10))
+                    showNotif('文件大小上限已更新')
+                  }}
+                >
+                  <option value="10">10 MB</option>
+                  <option value="50">50 MB</option>
+                  <option value="100">100 MB</option>
+                  <option value="500">500 MB</option>
+                  <option value="0">不限制</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

@@ -43,7 +43,6 @@ const IGNORE_DIRS: &[&str] = &[
 ];
 
 const IGNORE_FILES: &[&str] = &[".DS_Store", "Thumbs.db", "desktop.ini"];
-const MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
 
 fn is_ignored(name: &str, is_dir: bool) -> bool {
     if is_dir {
@@ -130,7 +129,7 @@ fn decode_msg(msg: &str) -> (String, String, String) {
 // ── File sync ───────────────────────────────────────────────────────────────
 
 /// Copy project → shadow workdir (clears shadow first).
-fn sync_to_shadow(project_path: &str, shadow_root: &Path, blocked: &HashSet<String>) -> io::Result<()> {
+fn sync_to_shadow(project_path: &str, shadow_root: &Path, blocked: &HashSet<String>, max_file_bytes: u64) -> io::Result<()> {
     // Clear shadow workdir, preserve .git/
     for entry in fs::read_dir(shadow_root)? {
         let entry = entry?;
@@ -144,7 +143,7 @@ fn sync_to_shadow(project_path: &str, shadow_root: &Path, blocked: &HashSet<Stri
             fs::remove_file(entry.path())?;
         }
     }
-    copy_filtered(Path::new(project_path), shadow_root, blocked, "")
+    copy_filtered(Path::new(project_path), shadow_root, blocked, "", max_file_bytes)
 }
 
 /// Match a name/path against a blocked pattern.
@@ -169,7 +168,7 @@ fn matches_blocked(rel: &str, name: &str, blocked: &HashSet<String>) -> bool {
     false
 }
 
-fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: &str) -> io::Result<()> {
+fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: &str, max_file_bytes: u64) -> io::Result<()> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let name = entry.file_name();
@@ -189,7 +188,7 @@ fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: 
             }
             let sub = dst.join(&name);
             fs::create_dir_all(&sub)?;
-            copy_filtered(&entry.path(), &sub, blocked, &rel)?;
+            copy_filtered(&entry.path(), &sub, blocked, &rel, max_file_bytes)?;
         } else if ft.is_file() {
             if is_ignored(&name_str, false) {
                 continue;
@@ -197,7 +196,7 @@ fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: 
             if matches_blocked(&rel, &name_str, blocked) {
                 continue;
             }
-            if entry.metadata()?.len() > MAX_FILE_BYTES {
+            if max_file_bytes > 0 && entry.metadata()?.len() > max_file_bytes {
                 continue;
             }
             fs::copy(entry.path(), dst.join(&name))?;
@@ -302,12 +301,13 @@ fn delta_summary(diff: &git2::Diff) -> Result<String, String> {
 /// If the current HEAD is already an auto-save commit it is amended in-place
 /// (i.e. replaced with the same parents), so the save list stays at one entry.
 #[tauri::command]
-pub fn auto_save(project_path: String, blocked_files: Vec<String>) -> Result<String, String> {
+pub fn auto_save(project_path: String, blocked_files: Vec<String>, max_file_mb: u64) -> Result<String, String> {
     let blocked: HashSet<String> = blocked_files.into_iter().collect();
+    let max_file_bytes = max_file_mb * 1024 * 1024;
     let repo = open_or_init_shadow(&project_path)?;
     let shadow_root = shadow_path(&project_path);
 
-    sync_to_shadow(&project_path, &shadow_root, &blocked)
+    sync_to_shadow(&project_path, &shadow_root, &blocked, max_file_bytes)
         .map_err(|e| format!("同步文件失败: {}", e))?;
 
     let mut index = repo.index().map_err(|e| e.to_string())?;
@@ -414,12 +414,14 @@ pub fn create_save(
     name: String,
     desc: String,
     blocked_files: Vec<String>,
+    max_file_mb: u64,
 ) -> Result<String, String> {
     let blocked: HashSet<String> = blocked_files.into_iter().collect();
+    let max_file_bytes = max_file_mb * 1024 * 1024;
     let repo = open_or_init_shadow(&project_path)?;
     let shadow_root = shadow_path(&project_path);
 
-    sync_to_shadow(&project_path, &shadow_root, &blocked)
+    sync_to_shadow(&project_path, &shadow_root, &blocked, max_file_bytes)
         .map_err(|e| format!("同步文件失败: {}", e))?;
 
     // Stage everything (clear index first to handle deletions)
