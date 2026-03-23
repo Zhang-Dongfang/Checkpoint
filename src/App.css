@@ -47,14 +47,14 @@ body {
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 .app-shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-.app { display: grid; grid-template-columns: 272px 1fr; flex: 1; overflow: hidden; min-height: 0; height: 100%; position: relative; }
+.app { display: grid; grid-template-columns: 272px 1fr; flex: 1; overflow: hidden; min-height: 0; height: 100%; }
 
 /* ── Divider collapse button ────────────────────────────────────────────── */
 .sidebar-collapse-btn {
   position: absolute;
-  left: 272px;
+  right: 0;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
   z-index: 10;
   width: 16px;
   height: 36px;
@@ -83,12 +83,13 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 [data-theme="light"] .sidebar { border-right-color: rgba(0,0,0,0.06); }
 
 /* Full-width draggable titlebar */
 .titlebar {
-  height: 36px;
+  height: 28px;
   background: var(--sidebar);
   display: flex;
   align-items: center;
@@ -113,7 +114,7 @@ body {
 }
 .win-btn {
   width: 46px;
-  height: 36px;
+  height: 28px;
   border: none;
   background: transparent;
   color: var(--text2);

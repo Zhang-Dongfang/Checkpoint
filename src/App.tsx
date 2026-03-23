@@ -342,21 +342,21 @@ export default function App() {
               {saves.length} 个存档 · {basename(projectPath)}
             </div>
           </div>
-        </div>
 
-        {/* Divider collapse button */}
-        <button
-          className="sidebar-collapse-btn"
-          onClick={toggleCollapse}
-          title={mainCollapsed ? '展开详情面板' : '收起详情面板'}
-        >
-          <svg width="8" height="12" viewBox="0 0 8 12" fill="none">
-            {mainCollapsed
-              ? <path d="M2 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              : <path d="M6 2L2 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            }
-          </svg>
-        </button>
+          {/* Divider collapse button */}
+          <button
+            className="sidebar-collapse-btn"
+            onClick={toggleCollapse}
+            title={mainCollapsed ? '展开详情面板' : '收起详情面板'}
+          >
+            <svg width="8" height="12" viewBox="0 0 8 12" fill="none">
+              {mainCollapsed
+                ? <path d="M2 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                : <path d="M6 2L2 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              }
+            </svg>
+          </button>
+        </div>
 
         {/* Main panel */}
         <div className="main">
