@@ -28,6 +28,7 @@ const SELECTED_KEY = 'savepoint_selected'
 const THEME_KEY = 'savepoint_theme'
 const AUTO_SAVE_ENABLED_KEY = 'savepoint_autosave_enabled'
 const AUTO_SAVE_INTERVAL_KEY = 'savepoint_autosave_interval'
+const blockedKey = (path: string) => `savepoint_blocked_${path}`
 
 function formatTime(ts: number): string {
   const diff = Date.now() - ts
@@ -94,6 +95,8 @@ export default function App() {
   const [autoSaveInterval, setAutoSaveInterval] = useState<number>(() =>
     parseInt(localStorage.getItem(AUTO_SAVE_INTERVAL_KEY) || '30', 10)
   )
+
+  const [blockedFiles, setBlockedFiles] = useState<string[]>([])
 
   const [mainCollapsed, setMainCollapsed] = useState(false)
   const [pinned, setPinned] = useState(false)
@@ -163,7 +166,7 @@ export default function App() {
   autoSaveCallbackRef.current = async () => {
     if (!projectPath) return
     try {
-      const newHash = await invoke<string>('auto_save', { projectPath })
+      const newHash = await invoke<string>('auto_save', { projectPath, blockedFiles })
       const result = await invoke<SaveInfo[]>('get_saves', { projectPath })
       setSaves(result)
       setSelectedId(newHash)
@@ -199,6 +202,19 @@ export default function App() {
   useEffect(() => {
     if (modalOpen) setTimeout(() => nameInputRef.current?.focus(), 100)
   }, [modalOpen])
+
+  // Load blocked files per project
+  useEffect(() => {
+    if (!projectPath) { setBlockedFiles([]); return }
+    const stored = localStorage.getItem(blockedKey(projectPath))
+    setBlockedFiles(stored ? JSON.parse(stored) : [])
+  }, [projectPath])
+
+  // Persist blocked files when they change
+  useEffect(() => {
+    if (!projectPath) return
+    localStorage.setItem(blockedKey(projectPath), JSON.stringify(blockedFiles))
+  }, [blockedFiles, projectPath])
 
   // Load saves when project path changes
   useEffect(() => {
@@ -242,6 +258,16 @@ export default function App() {
     notifTimer.current = setTimeout(() => setNotif(n => ({ ...n, show: false })), 2400)
   }, [])
 
+  const blockFile = useCallback((file: string) => {
+    setBlockedFiles(prev => prev.includes(file) ? prev : [...prev, file])
+    showNotif(`已屏蔽：${file}`)
+  }, [showNotif])
+
+  const unblockFile = useCallback((file: string) => {
+    setBlockedFiles(prev => prev.filter(f => f !== file))
+    showNotif(`已取消屏蔽：${file}`)
+  }, [showNotif])
+
   const pickFolder = async () => {
     const selected = await openDialog({ directory: true, multiple: false, title: '选择项目文件夹' })
     if (selected && typeof selected === 'string') {
@@ -266,6 +292,7 @@ export default function App() {
         projectPath,
         name,
         desc: saveDesc.trim(),
+        blockedFiles,
       })
       await loadSaves()
       setSelectedId(newHash)
@@ -446,6 +473,9 @@ export default function App() {
               autoSaveInterval={autoSaveInterval}
               onAutoSaveToggle={setAutoSaveEnabled}
               onAutoSaveIntervalChange={setAutoSaveInterval}
+              blockedFiles={blockedFiles}
+              onBlockFile={blockFile}
+              onUnblockFile={unblockFile}
             />
           ) : currentSave ? (
             <SaveDetail
@@ -453,6 +483,8 @@ export default function App() {
               diffs={currentDiffs}
               diffsLoading={diffsLoading}
               onRollback={rollback}
+              blockedFiles={blockedFiles}
+              onBlockFile={blockFile}
             />
           ) : (
             <div className="empty-state">
@@ -520,9 +552,11 @@ interface SaveDetailProps {
   diffs: DiffFile[]
   diffsLoading: boolean
   onRollback: (id: string) => void
+  blockedFiles: string[]
+  onBlockFile: (file: string) => void
 }
 
-function SaveDetail({ save, diffs, diffsLoading, onRollback }: SaveDetailProps) {
+function SaveDetail({ save, diffs, diffsLoading, onRollback, blockedFiles, onBlockFile }: SaveDetailProps) {
   const totalAdd = diffs.reduce((a, d) => a + d.add, 0)
   const totalRem = diffs.reduce((a, d) => a + d.rem, 0)
 
@@ -566,7 +600,7 @@ function SaveDetail({ save, diffs, diffsLoading, onRollback }: SaveDetailProps) 
             ) : diffs.length > 0 ? (
               <div className="diff-list">
                 {diffs.map((d, i) => (
-                  <div className="diff-row" key={i}>
+                  <div className={`diff-row${blockedFiles.includes(d.file) ? ' diff-row-blocked' : ''}`} key={i}>
                     <div className={`diff-icon diff-icon-${d.file_type === 'add' ? 'add' : d.file_type === 'del' ? 'del' : 'mod'}`}>
                       {d.file_type === 'add' ? '+' : d.file_type === 'del' ? '−' : '~'}
                     </div>
@@ -575,6 +609,15 @@ function SaveDetail({ save, diffs, diffsLoading, onRollback }: SaveDetailProps) 
                       {d.add > 0 && <span className="diff-add">+{d.add}</span>}
                       {d.rem > 0 && <span className="diff-rem">-{d.rem}</span>}
                     </div>
+                    {blockedFiles.includes(d.file) ? (
+                      <span className="diff-blocked-tag">已屏蔽</span>
+                    ) : (
+                      <button
+                        className="diff-block-btn"
+                        title="屏蔽此文件（下次存档起不再追踪）"
+                        onClick={() => onBlockFile(d.file)}
+                      >屏蔽</button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -603,6 +646,9 @@ function SettingsPanel({
   autoSaveInterval,
   onAutoSaveToggle,
   onAutoSaveIntervalChange,
+  blockedFiles,
+  onBlockFile,
+  onUnblockFile,
 }: {
   showNotif: (text: string, type?: 'normal' | 'acc') => void
   projectPath: string
@@ -613,7 +659,25 @@ function SettingsPanel({
   autoSaveInterval: number
   onAutoSaveToggle: (enabled: boolean) => void
   onAutoSaveIntervalChange: (interval: number) => void
+  blockedFiles: string[]
+  onBlockFile: (file: string) => void
+  onUnblockFile: (file: string) => void
 }) {
+  const pickBlocked = async (directory: boolean) => {
+    const selected = await openDialog({
+      multiple: true,
+      directory,
+      title: directory ? '选择要屏蔽的文件夹' : '选择要屏蔽的文件',
+      defaultPath: projectPath,
+    })
+    const items = Array.isArray(selected) ? selected : selected ? [selected] : []
+    const base = projectPath.replace(/\\/g, '/').replace(/\/$/, '')
+    for (const f of items) {
+      const rel = f.replace(/\\/g, '/').replace(base + '/', '')
+      onBlockFile(rel)
+    }
+  }
+
   return (
     <>
       <div className="main-header">
@@ -688,6 +752,50 @@ function SettingsPanel({
                 <input type="checkbox" checked={theme === 'dark'} onChange={toggleTheme} />
                 <div className="toggle-slider" />
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">屏蔽文件</span>
+            {blockedFiles.length > 0 && (
+              <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
+                {blockedFiles.length} 个
+              </span>
+            )}
+          </div>
+          <div className="card-body">
+            <div className="setting-sub" style={{ marginBottom: 12 }}>
+              屏蔽的文件不会被存档追踪，对当前项目生效
+            </div>
+            {blockedFiles.length > 0 && (
+              <div className="blocked-list">
+                {blockedFiles.map(f => (
+                  <div className="blocked-row" key={f}>
+                    <span className="blocked-path">{f}</span>
+                    <button className="blocked-remove" onClick={() => onUnblockFile(f)} title="取消屏蔽">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => pickBlocked(false)}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                选择文件…
+              </button>
+              <button className="btn btn-ghost" style={{ fontSize: '12px' }} onClick={() => pickBlocked(true)}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                选择文件夹…
+              </button>
             </div>
           </div>
         </div>

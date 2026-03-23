@@ -389,6 +389,78 @@ body {
 .diff-add { color: rgba(74,222,128,0.65); }
 .diff-rem { color: rgba(248,113,113,0.6); }
 
+/* ── Diff block button ──────────────────────────────────────────────────── */
+.diff-block-btn {
+  opacity: 0;
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--text3);
+  cursor: pointer;
+  transition: opacity .15s, color .15s;
+  flex-shrink: 0;
+}
+.diff-row:hover .diff-block-btn { opacity: 1; }
+.diff-block-btn:hover { color: var(--text2); }
+
+.diff-blocked-tag {
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.15);
+  border-radius: 3px;
+  color: rgba(248,113,113,0.55);
+  flex-shrink: 0;
+}
+.diff-row-blocked .diff-filename { opacity: .4; text-decoration: line-through; }
+.diff-row-blocked .diff-icon { opacity: .35; }
+.diff-row-blocked .diff-stats { opacity: .35; }
+
+/* ── Blocked files (settings) ───────────────────────────────────────────── */
+.blocked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+.blocked-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+.blocked-path {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text2);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blocked-remove {
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: color .15s, background .15s;
+  flex-shrink: 0;
+}
+.blocked-remove:hover { color: rgba(248,113,113,0.8); background: rgba(248,113,113,0.08); }
+
+
 /* ── Settings ───────────────────────────────────────────────────────────── */
 .setting-row {
   display: flex;

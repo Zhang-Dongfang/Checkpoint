@@ -121,7 +121,7 @@ fn decode_msg(msg: &str) -> (String, String, String) {
 // ── File sync ───────────────────────────────────────────────────────────────
 
 /// Copy project → shadow workdir (clears shadow first).
-fn sync_to_shadow(project_path: &str, shadow_root: &Path) -> io::Result<()> {
+fn sync_to_shadow(project_path: &str, shadow_root: &Path, blocked: &HashSet<String>) -> io::Result<()> {
     // Clear shadow workdir, preserve .git/
     for entry in fs::read_dir(shadow_root)? {
         let entry = entry?;
@@ -135,24 +135,35 @@ fn sync_to_shadow(project_path: &str, shadow_root: &Path) -> io::Result<()> {
             fs::remove_file(entry.path())?;
         }
     }
-    copy_filtered(Path::new(project_path), shadow_root)
+    copy_filtered(Path::new(project_path), shadow_root, blocked, "")
 }
 
-fn copy_filtered(src: &Path, dst: &Path) -> io::Result<()> {
+fn copy_filtered(src: &Path, dst: &Path, blocked: &HashSet<String>, rel_prefix: &str) -> io::Result<()> {
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
         let ft = entry.file_type()?;
+        let rel = if rel_prefix.is_empty() {
+            name_str.to_string()
+        } else {
+            format!("{}/{}", rel_prefix, name_str)
+        };
         if ft.is_dir() {
             if is_ignored(&name_str, true) {
                 continue;
             }
+            if blocked.contains(&rel) {
+                continue;
+            }
             let sub = dst.join(&name);
             fs::create_dir_all(&sub)?;
-            copy_filtered(&entry.path(), &sub)?;
+            copy_filtered(&entry.path(), &sub, blocked, &rel)?;
         } else if ft.is_file() {
             if is_ignored(&name_str, false) {
+                continue;
+            }
+            if blocked.contains(&rel) {
                 continue;
             }
             if entry.metadata()?.len() > MAX_FILE_BYTES {
@@ -260,11 +271,12 @@ fn delta_summary(diff: &git2::Diff) -> Result<String, String> {
 /// If the current HEAD is already an auto-save commit it is amended in-place
 /// (i.e. replaced with the same parents), so the save list stays at one entry.
 #[tauri::command]
-pub fn auto_save(project_path: String) -> Result<String, String> {
+pub fn auto_save(project_path: String, blocked_files: Vec<String>) -> Result<String, String> {
+    let blocked: HashSet<String> = blocked_files.into_iter().collect();
     let repo = open_or_init_shadow(&project_path)?;
     let shadow_root = shadow_path(&project_path);
 
-    sync_to_shadow(&project_path, &shadow_root)
+    sync_to_shadow(&project_path, &shadow_root, &blocked)
         .map_err(|e| format!("同步文件失败: {}", e))?;
 
     let mut index = repo.index().map_err(|e| e.to_string())?;
@@ -370,11 +382,13 @@ pub fn create_save(
     project_path: String,
     name: String,
     desc: String,
+    blocked_files: Vec<String>,
 ) -> Result<String, String> {
+    let blocked: HashSet<String> = blocked_files.into_iter().collect();
     let repo = open_or_init_shadow(&project_path)?;
     let shadow_root = shadow_path(&project_path);
 
-    sync_to_shadow(&project_path, &shadow_root)
+    sync_to_shadow(&project_path, &shadow_root, &blocked)
         .map_err(|e| format!("同步文件失败: {}", e))?;
 
     // Stage everything (clear index first to handle deletions)
