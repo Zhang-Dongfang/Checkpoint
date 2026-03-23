@@ -11,7 +11,8 @@
       "Read(//c/Users/windo/AppData/Local/Temp/claude/E--Checkpoint/0bd04e7b-fc21-47f4-9692-1e495575cfa8/tasks/**)",
       "Read(//c/Users/windo/AppData/Local/Temp/claude/E--Checkpoint/0bd04e7b-fc21-47f4-9692-1e465575cfa8/tasks/**)",
       "Bash(node -e \"const p = require\\(''./node_modules/@tauri-apps/api/package.json''\\); console.log\\(p.version\\); console.log\\(Object.keys\\(p.exports || {}\\).filter\\(k=>k.includes\\(''process''\\)\\)\\)\")",
-      "Bash(node -e \"const p = require\\(''''/e/Checkpoint/node_modules/@tauri-apps/api/package.json''''\\); console.log\\(JSON.stringify\\(Object.keys\\(p.exports||{}\\), null, 2\\)\\)\")"
+      "Bash(node -e \"const p = require\\(''''/e/Checkpoint/node_modules/@tauri-apps/api/package.json''''\\); console.log\\(JSON.stringify\\(Object.keys\\(p.exports||{}\\), null, 2\\)\\)\")",
+      "Bash(chmod:*)"
     ]
   }
 }

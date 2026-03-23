@@ -615,7 +615,7 @@ export default function App() {
           </button>
           <button className="update-banner-dismiss" onClick={() => setUpdateInfo(null)}>
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
           </button>
         </div>
@@ -740,6 +740,61 @@ function SaveDetail({ save, diffs, diffsLoading, onRollback, blockedFiles, onBlo
   )
 }
 
+// ── UpdateChecker ───────────────────────────────────────────────────────────
+
+function UpdateChecker() {
+  const [status, setStatus] = useState<'idle' | 'checking' | 'latest' | 'available' | 'error'>('idle')
+  const [newVersion, setNewVersion] = useState('')
+  const [errMsg, setErrMsg] = useState('')
+  const [installing, setInstalling] = useState(false)
+  const [installer, setInstaller] = useState<(() => Promise<void>) | null>(null)
+
+  const checkNow = async () => {
+    setStatus('checking')
+    try {
+      const update = await check()
+      if (update?.available) {
+        setNewVersion(update.version)
+        setInstaller(() => async () => {
+          setInstalling(true)
+          await update.downloadAndInstall()
+          const { relaunch } = await import('@tauri-apps/plugin-process')
+          await relaunch()
+        })
+        setStatus('available')
+      } else {
+        setStatus('latest')
+      }
+    } catch (e) {
+      setErrMsg(String(e))
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="setting-row">
+      <div>
+        <div className="setting-label">检查更新</div>
+        <div className="setting-sub" title={status === 'error' ? errMsg : undefined}>
+          {status === 'idle' && '手动检查是否有新版本'}
+          {status === 'checking' && '检查中…'}
+          {status === 'latest' && '已是最新版本'}
+          {status === 'available' && `发现新版本 v${newVersion}`}
+          {status === 'error' && '检查失败，点击重试'}
+        </div>
+      </div>
+      {status === 'available' ? (
+        <button className="btn btn-ghost" disabled={installing} onClick={() => installer?.()}>
+          {installing ? '安装中…' : '立即更新'}
+        </button>
+      ) : (
+        <button className="btn btn-ghost" disabled={status === 'checking'} onClick={checkNow}>
+          {status === 'checking' ? '检查中…' : '检查'}
+        </button>
+      )}
+    </div>
+  )
+}
 // ── SettingsPanel ──────────────────────────────────────────────────────────
 
 function SettingsPanel({
@@ -964,18 +1019,7 @@ function SettingsPanel({
         <div className="card">
           <div className="card-header"><span className="card-title">关于</span></div>
           <div className="card-body">
-            <div className="setting-row">
-              <div>
-                <div className="setting-label">存储后端</div>
-                <div className="setting-sub">Git — 每个存档点对应一个 git commit</div>
-              </div>
-            </div>
-            <div className="setting-row" style={{ marginTop: 8 }}>
-              <div>
-                <div className="setting-label">回滚方式</div>
-                <div className="setting-sub">git checkout — 非破坏性，历史保留</div>
-              </div>
-            </div>
+            <UpdateChecker />
           </div>
         </div>
 
