@@ -334,9 +334,7 @@ export default function App() {
       <button className="win-btn" title="最小化" onClick={() => win().then(w => w.minimize())}>
         <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1.5" y="0.25" fill="currentColor" /></svg>
       </button>
-      <button className="win-btn" title="最大化" onClick={() => win().then(w => w.toggleMaximize())}>
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".75" y=".75" width="8.5" height="8.5" stroke="currentColor" strokeWidth="1.2" /></svg>
-      </button>
+
       <button className="win-btn win-close" title="关闭" onClick={() => win().then(w => w.close())}>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
       </button>
@@ -346,7 +344,7 @@ export default function App() {
   if (!projectPath) {
     return (
       <div className="app-shell">
-        <div className="titlebar"><div className="titlebar-drag" /><WinControls /></div>
+        <div className="titlebar"><div className="titlebar-drag" /><span className="titlebar-title">Checkpoint</span><div className="titlebar-drag" /><WinControls /></div>
         <div className="welcome-screen">
           <div className="welcome-icon">
             <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -377,6 +375,8 @@ export default function App() {
             <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
           </svg>
         </button>
+        <div className="titlebar-drag" />
+        <span className="titlebar-title">Checkpoint</span>
         <div className="titlebar-drag" />
         <WinControls />
       </div>
