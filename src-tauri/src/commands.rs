@@ -432,3 +432,9 @@ pub fn rollback_to(project_path: String, save_id: String) -> Result<(), String> 
     sync_to_project(&shadow_path(&project_path), &project_path)
         .map_err(|e| format!("恢复文件失败: {}", e))
 }
+
+
+#[tauri::command]
+pub fn init_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.set_decorations(false).map_err(|e| e.to_string())
+}

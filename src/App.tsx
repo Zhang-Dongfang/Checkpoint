@@ -25,6 +25,7 @@ interface DiffFile {
 
 const PROJECT_PATH_KEY = 'savepoint_project_path'
 const SELECTED_KEY = 'savepoint_selected'
+const THEME_KEY = 'savepoint_theme'
 
 function formatTime(ts: number): string {
   const diff = Date.now() - ts
@@ -59,6 +60,23 @@ function basename(p: string): string {
 // ── App ────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    (localStorage.getItem(THEME_KEY) as 'dark' | 'light') || 'dark'
+  )
+
+  const toggleTheme = useCallback(() => {
+    setTheme(t => {
+      const next = t === 'dark' ? 'light' : 'dark'
+      localStorage.setItem(THEME_KEY, next)
+      document.documentElement.setAttribute('data-theme', next)
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [])
+
   const [projectPath, setProjectPath] = useState<string>(() =>
     localStorage.getItem(PROJECT_PATH_KEY) || ''
   )
@@ -201,18 +219,34 @@ export default function App() {
 
   // ── Welcome screen ───────────────────────────────────────────────────────
 
+  const win = () => import('@tauri-apps/api/window').then(m => m.getCurrentWindow())
+
+  const WinControls = () => (
+    <div className="win-controls">
+      <button className="win-btn" title="最小化" onClick={() => win().then(w => w.minimize())}>
+        <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1.5" y="0.25" fill="currentColor"/></svg>
+      </button>
+      <button className="win-btn" title="最大化" onClick={() => win().then(w => w.toggleMaximize())}>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".75" y=".75" width="8.5" height="8.5" stroke="currentColor" strokeWidth="1.2"/></svg>
+      </button>
+      <button className="win-btn win-close" title="关闭" onClick={() => win().then(w => w.close())}>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+      </button>
+    </div>
+  )
+
   if (!projectPath) {
     return (
       <div className="app-shell">
-        <div className="titlebar">
-          <div className="titlebar-dots">
-            <div className="dot dot-r" /><div className="dot dot-y" /><div className="dot dot-g" />
-          </div>
-          <div className="titlebar-title">SavePoint</div>
-          <div className="titlebar-badge">v0.1.0</div>
-        </div>
+        <div className="titlebar"><div className="titlebar-drag" /><WinControls /></div>
         <div className="welcome-screen">
-          <div className="welcome-icon">📂</div>
+          <div className="welcome-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="2" y="8" width="28" height="20" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M2 12h28" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M2 8l4-4h8l2 4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            </svg>
+          </div>
           <div className="welcome-title">欢迎使用 SavePoint</div>
           <div className="welcome-sub">选择一个 git 项目文件夹开始使用</div>
           <button className="btn btn-accent" onClick={pickFolder}>选择项目文件夹</button>
@@ -228,26 +262,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Titlebar */}
-      <div className="titlebar">
-        <div className="titlebar-dots">
-          <div className="dot dot-r" /><div className="dot dot-y" /><div className="dot dot-g" />
-        </div>
-        <div className="titlebar-title">SavePoint</div>
-        <div className="titlebar-badge">v0.1.0</div>
-      </div>
-
+      <div className="titlebar"><div className="titlebar-drag" /><WinControls /></div>
       <div className="app">
         {/* Sidebar */}
         <div className="sidebar">
-          <div className="sidebar-header">
+          <div className="sidebar-top">
             <div className="project-selector" onClick={pickFolder}>
-              <div className="project-icon">⚡</div>
-              <div>
-                <div className="project-name">{basename(projectPath)}</div>
-                <div className="project-sub">{projectPath}</div>
-              </div>
-              <div className="chevron">⌄</div>
+              <div className="project-name">{basename(projectPath)}</div>
+              <div className="project-sub">{projectPath}</div>
             </div>
           </div>
 
@@ -263,6 +285,12 @@ export default function App() {
                 <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.4" />
                 <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
+            </button>
+            <button className="btn btn-ghost theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? '切换亮色' : '切换暗色'}>
+              {theme === 'dark'
+                ? <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.8" stroke="currentColor" strokeWidth="1.4"/><path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M3 3l1.1 1.1M9.9 9.9L11 11M3 11l1.1-1.1M9.9 4.1L11 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 8A6 6 0 016 2a6 6 0 100 10 6 6 0 006-4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+              }
             </button>
           </div>
 
@@ -288,15 +316,9 @@ export default function App() {
                       style={{ animationDelay: `${i * 0.04}s` }}
                       onClick={() => setSelectedId(s.id)}
                     >
-                      <div className="save-num">
-                        {String(saves.indexOf(s) + 1).padStart(2, '0')}
-                      </div>
                       <div className="save-info">
                         <div className="save-title">{s.name}</div>
-                        <div className="save-meta-line">
-                          <span className="save-time">{formatTime(s.time)}</span>
-                          <span className="tag tag-manual">手动</span>
-                        </div>
+                        <div className="save-time">{formatTime(s.time)}</div>
                       </div>
                       <div className="save-delta">{s.delta}</div>
                     </div>
@@ -307,7 +329,7 @@ export default function App() {
           </div>
 
           <div className="sidebar-footer">
-            <div style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
+            <div style={{ fontSize: '12px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
               {saves.length} 个存档 · {basename(projectPath)}
             </div>
           </div>
@@ -330,7 +352,6 @@ export default function App() {
             />
           ) : (
             <div className="empty-state">
-              <div className="empty-icon">📭</div>
               <div className="empty-text">还没有存档</div>
               <div className="empty-sub">点击"存档"按钮创建第一个</div>
             </div>
@@ -419,9 +440,7 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
           <div className="save-headline">{save.name}</div>
           <div className="save-headline-meta">
             {new Date(save.time).toLocaleString('zh-CN')} · {save.delta}
-          </div>
-          <div className="save-headline-meta" style={{ marginTop: 2, fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--text3)' }}>
-            {save.id.slice(0, 8)}
+            <br />{save.id.slice(0, 8)}
           </div>
         </div>
         <div className="main-actions">
@@ -432,7 +451,7 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
 
       <div className="main-body">
         {save.desc && (
-          <div style={{ padding: '12px 16px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '13px', color: 'var(--text2)', lineHeight: 1.6 }}>
+          <div style={{ padding: '11px 14px', background: 'var(--bg2)', borderRadius: 'var(--radius)', fontSize: '12px', color: 'var(--text2)', lineHeight: 1.6, fontFamily: 'var(--mono)' }}>
             {save.desc}
           </div>
         )}
@@ -443,8 +462,8 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
             {!diffsLoading && (
               <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text2)' }}>
                 {diffs.length} 个文件{' '}
-                <span style={{ color: 'var(--green)' }}>+{totalAdd}</span>{' '}
-                <span style={{ color: 'var(--red)' }}>-{totalRem}</span>
+                <span style={{ color: 'var(--text2)' }}>+{totalAdd}</span>{' '}
+                <span style={{ color: 'var(--text3)' }}>-{totalRem}</span>
               </span>
             )}
           </div>
@@ -482,15 +501,11 @@ function SaveDetail({ save, saves, diffs, diffsLoading, selectedId, onSelect, on
             <div className="timeline-viz">
               {[...saves].reverse().map((s, i) => {
                 const isActive = s.id === selectedId
-                const dotColor = isActive ? 'var(--accent)' : 'var(--text3)'
                 return (
                   <div key={s.id} className={`tl-item${isActive ? ' active' : ''}`} onClick={() => onSelect(s.id)}>
                     <div className="tl-line-wrap">
                       {i > 0 && <div className="tl-connector" />}
-                      <div
-                        className={`tl-dot${isActive ? ' tl-dot-active' : ''}`}
-                        style={{ background: dotColor, borderColor: isActive ? 'var(--accent)' : 'var(--bg3)' }}
-                      />
+                      <div className={`tl-dot${isActive ? ' tl-dot-active' : ''}`} />
                       {i < saves.length - 1 && <div className="tl-connector" />}
                     </div>
                     <div className="tl-label">#{String(saves.indexOf(s) + 1).padStart(2, '0')}</div>
@@ -596,7 +611,11 @@ function SettingsPanel({
 function CloudCTA({ showNotif }: { showNotif: (text: string, type?: 'normal' | 'acc') => void }) {
   return (
     <div className="cloud-cta">
-      <div className="cloud-icon">☁</div>
+      <div className="cloud-icon">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M3.5 10.5A2.5 2.5 0 013.5 5.5a.5.5 0 010-.1A3 3 0 0110 6h.5a2 2 0 010 4H3.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+        </svg>
+      </div>
       <div className="cloud-text">
         <div className="cloud-title">开启云存档同步</div>
         <div className="cloud-desc">跨设备访问你的所有存档，永不丢失，支持最多 365 天历史。</div>
