@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "checkpoint",
-        "width": 800,
-        "height": 600
+        "title": "SavePoint — 版本管理器",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 500
       }
     ],
     "security": {
