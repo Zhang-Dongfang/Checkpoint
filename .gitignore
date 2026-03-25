@@ -31,3 +31,5 @@ src-tauri/target/
 *.pem
 *.p12
 *.pfx
+
+演示项目

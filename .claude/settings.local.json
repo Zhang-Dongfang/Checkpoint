@@ -20,7 +20,12 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:news.ycombinator.com)",
-      "WebFetch(domain:hyperclay.com)"
+      "WebFetch(domain:hyperclay.com)",
+      "Bash(printf 'PLACEHOLDER - 封面设计主图 v1\\\\n此文件为演示用占位文件')",
+      "Bash(\"E:\\\\Checkpoint\\\\演示项目\\\\封面设计.psd\")",
+      "Bash(printf 'PLACEHOLDER - 产品详情页切图 v1\\\\n此文件为演示用占位文件')",
+      "Bash(\"E:\\\\Checkpoint\\\\演示项目\\\\素材\\\\详情页切图.psd\")",
+      "Bash(printf 'PLACEHOLDER - 产品介绍文档 v1\\\\n此文件为演示用占位文件')"
     ]
   }
 }
