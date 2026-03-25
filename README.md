@@ -1,7 +1,20 @@
-# Tauri + React + Typescript
+# 记录点 · Checkpoint
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+一个本地版本管理工具，像游戏存档一样管理你的项目文件。
 
-## Recommended IDE Setup
+## 功能
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- **手动保存存档** — 选择项目文件夹后，随时点击保存，创建当前状态的快照。每个存档可以填写名称和备注。
+- **查看文件变更** — 点击任意存档，可以看到与上一版本相比新增、修改、删除了哪些文件，以及每个文件的行数变化。
+- **回滚到任意版本** — 点击"加载存档"，将项目文件夹恢复到该存档时的状态。
+- **自动保存** — 可以开启定时自动存档，并自定义保存间隔。
+- **浮动悬浮窗** — 可以将界面收起，固定到屏幕右上角，需要时展开，不影响正常工作。
+- **深色 / 浅色主题** — 支持手动切换。
+
+## 下载
+
+前往 [Releases](../../releases) 页面下载最新版本，解压后直接运行，无需安装。
+
+## 开源
+
+MIT 协议，免费使用。有 bug 或建议请提 [Issue](../../issues)。
