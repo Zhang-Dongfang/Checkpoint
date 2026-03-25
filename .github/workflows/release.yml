@@ -38,11 +38,14 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_OWNER: ${{ secrets.GITEE_OWNER }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
           REPO="${GITHUB_REPOSITORY}"
+          GITEE_REPO="Checkpoint"
 
           echo "=== Bundle output ==="
           find src-tauri/target/release/bundle -type f | sort
@@ -64,18 +67,40 @@ jobs:
           fi
 
           INSTALLER_NAME=$(basename "$INSTALLER")
-          ASSET_URL="https://github.com/${REPO}/releases/download/${TAG}/${INSTALLER_NAME}"
 
-          echo "INSTALLER: $INSTALLER"
-          echo "SIG_FILE: $SIG_FILE"
-          echo "ASSET_URL: $ASSET_URL"
-
+          # ── 1. GitHub release ──────────────────────────────────────────────
           gh release create "$TAG" \
             --title "Checkpoint ${TAG}" \
             --generate-notes \
             "$INSTALLER" \
             "$SIG_FILE"
 
+          # ── 2. Gitee release ───────────────────────────────────────────────
+          GITEE_API="https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/releases"
+
+          RELEASE_ID=$(curl -s -X POST "$GITEE_API" \
+            -H "Content-Type: application/json" \
+            -d "{\"access_token\":\"${GITEE_TOKEN}\",\"tag_name\":\"${TAG}\",\"name\":\"Checkpoint ${TAG}\",\"body\":\"Release ${TAG}\"}" \
+            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "ERROR: Failed to create Gitee release"
+            exit 1
+          fi
+          echo "Gitee release ID: $RELEASE_ID"
+
+          curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files" \
+            -F "access_token=${GITEE_TOKEN}" \
+            -F "file=@${INSTALLER}"
+
+          # Gitee download URL
+          ASSET_URL="https://gitee.com/${GITEE_OWNER}/${GITEE_REPO}/releases/download/${TAG}/${INSTALLER_NAME}"
+
+          echo "INSTALLER: $INSTALLER"
+          echo "SIG_FILE: $SIG_FILE"
+          echo "ASSET_URL (Gitee): $ASSET_URL"
+
+          # ── 3. Update latest.json ──────────────────────────────────────────
           node -e "
             const fs = require('fs');
             const sig = fs.readFileSync(process.argv[1], 'utf8').trim();
