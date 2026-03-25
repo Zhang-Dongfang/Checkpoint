@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
-  "notes": "https://github.com/Zhang-Dongfang/Checkpoint/releases/tag/v1.0.1",
-  "pub_date": "2026-03-25T11:08:01.328Z",
+  "version": "1.0.2",
+  "notes": "https://github.com/Zhang-Dongfang/Checkpoint/releases/tag/v1.0.2",
+  "pub_date": "2026-03-25T11:23:21.932Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTcU9na1F1ZlVVZ0MwbjIrcGZEaGdJaStYZ2dyKzk3R3JTWnZUMkptUWlJVXVMdFA5R3FWNWU2K3FkeFFyVk5jWXd5a1VZVzl3RzlxV2NMVWo5cTdyTVA5UThwZFgvZWdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0NDM2NzYwCWZpbGU6Q2hlY2twb2ludF8xLjAuMV94NjQtc2V0dXAuZXhlCmo4UWx4QldyMlVjbFhQRGJNV2dxUEdTbU9qZEFaQ1ppdW15TldKTGk1MUt1UlBQaXVWQ0MxVVR6SStsWHZGWGh0NGxBZElCZ3A4WGVML3EzNUx4dUNBPT0K",
-      "url": "https://gitee.com/thBing/Checkpoint/releases/download/v1.0.1/Checkpoint_1.0.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTcU9na1F1ZlVVZ0Fhek1XYnVaaU5sNHd0d3hHQm5kUTNGdkExaFpFbTZwWlVjdmNlZ2F2OXhZN2dmWHZmQmpLVUZoTEZGZ3dOWG5iM053VkQxMTkwbmp1aGh3S3ZuS3dNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0NDM3NjU1CWZpbGU6Q2hlY2twb2ludF8xLjAuMl94NjQtc2V0dXAuZXhlCktwaldZSGoxVjc4M2JPYUFJckwwSW9MdXlxYUF6dkpjeW9KZHBQeGZvdStaZ0YxM0t1cndpL242aGs1bkdjOHo0UVpEZFdDb3NDRlJvL1JrbHNGU0JnPT0K",
+      "url": "https://gitee.com/thBing/Checkpoint/releases/download/v1.0.2/Checkpoint_1.0.2_x64-setup.exe"
     }
   }
 }
