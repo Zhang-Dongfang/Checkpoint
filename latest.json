@@ -1,11 +1,11 @@
 {
-  "version": "0.1.4",
-  "notes": "",
-  "pub_date": "2026-03-25T00:00:00Z",
+  "version": "0.1.7",
+  "notes": "https://github.com/Zhang-Dongfang/Checkpoint/releases/tag/v0.1.7",
+  "pub_date": "2026-03-25T09:38:06.889Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "",
-      "url": ""
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTcU9na1F1ZlVVZ0VXNWpUOXZLNGk3UE5zY3pLeVBKSU9GdEZmcWlTK2FJSW9BMmJHMXF4bHVjemwzQ3VvMkcxbnFZTlNLV1Iybk5zZEJtVG9tNlNKZm4wZ3NDZUNOL3dvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc0NDMxNDgwCWZpbGU6Q2hlY2twb2ludF8wLjEuN194NjQtc2V0dXAuZXhlCmxhTTJqMzE5WGZPdTgwOFI0cENRVUwyTHlRM0pkc0JFS2Z0RGlYd3M0RnM2bE94Z2M0bi9uS3J1VlZUMTRUYk9ySkJWd0lEZng1anpSZzhRRlNSV0RRPT0K",
+      "url": "https://github.com/Zhang-Dongfang/Checkpoint/releases/download/v0.1.7/Checkpoint_0.1.7_x64-setup.exe"
     }
   }
 }
