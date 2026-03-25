@@ -47,20 +47,7 @@ jobs:
           echo "=== Bundle output ==="
           find src-tauri/target/release/bundle -type f | sort
 
-          BUNDLE_ZIP=$(find src-tauri/target/release/bundle/nsis -name "*.nsis.zip" 2>/dev/null | head -1 || true)
-          if [ -z "$BUNDLE_ZIP" ]; then
-            BUNDLE_ZIP=$(find src-tauri/target/release/bundle/msi -name "*.msi.zip" 2>/dev/null | head -1 || true)
-          fi
-          if [ -z "$BUNDLE_ZIP" ]; then
-            echo "ERROR: No updater bundle (.nsis.zip / .msi.zip) found. Make sure TAURI_SIGNING_PRIVATE_KEY is set."
-            exit 1
-          fi
-          SIG_FILE="${BUNDLE_ZIP}.sig"
-          if [ ! -f "$SIG_FILE" ]; then
-            echo "ERROR: Signature file not found: $SIG_FILE"
-            exit 1
-          fi
-
+          # Tauri v2 signs installers directly — no .zip, just .exe.sig / .msi.sig
           INSTALLER=$(find src-tauri/target/release/bundle/nsis -name "*-setup.exe" 2>/dev/null | head -1 || true)
           if [ -z "$INSTALLER" ]; then
             INSTALLER=$(find src-tauri/target/release/bundle/msi -name "*.msi" 2>/dev/null | head -1 || true)
@@ -69,12 +56,17 @@ jobs:
             echo "ERROR: No installer (.exe / .msi) found."
             exit 1
           fi
+          SIG_FILE="${INSTALLER}.sig"
+          if [ ! -f "$SIG_FILE" ]; then
+            echo "ERROR: Signature file not found: $SIG_FILE"
+            echo "Make sure TAURI_SIGNING_PRIVATE_KEY secret is set."
+            exit 1
+          fi
 
-          ZIP_NAME=$(basename "$BUNDLE_ZIP")
-          ASSET_URL="https://github.com/${REPO}/releases/download/${TAG}/${ZIP_NAME}"
+          INSTALLER_NAME=$(basename "$INSTALLER")
+          ASSET_URL="https://github.com/${REPO}/releases/download/${TAG}/${INSTALLER_NAME}"
 
           echo "INSTALLER: $INSTALLER"
-          echo "BUNDLE_ZIP: $BUNDLE_ZIP"
           echo "SIG_FILE: $SIG_FILE"
           echo "ASSET_URL: $ASSET_URL"
 
@@ -82,7 +74,6 @@ jobs:
             --title "Checkpoint ${TAG}" \
             --generate-notes \
             "$INSTALLER" \
-            "$BUNDLE_ZIP" \
             "$SIG_FILE"
 
           node -e "
