@@ -85,7 +85,7 @@ jobs:
 
           GITEE_RESP=$(curl -s -X POST "${GITEE_API}?access_token=${GITEE_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\":\"${TAG}\",\"name\":\"Checkpoint ${TAG}\",\"body\":\"Release ${TAG}\"}")
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"Checkpoint ${TAG}\",\"body\":\"Release ${TAG}\",\"target_commitish\":\"main\"}")
           echo "Gitee API response: $GITEE_RESP"
 
           RELEASE_ID=$(echo "$GITEE_RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{ try{ console.log(JSON.parse(d).id) }catch(e){ console.log('parse_error') } })")
