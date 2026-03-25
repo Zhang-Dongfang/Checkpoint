@@ -76,21 +76,27 @@ jobs:
             "$SIG_FILE"
 
           # ── 2. Gitee release ───────────────────────────────────────────────
+          # 先把 tag 推到 Gitee（mirror workflow 只同步 main，不同步 tag）
+          git remote add gitee "https://${GITEE_OWNER}:${GITEE_TOKEN}@gitee.com/${GITEE_OWNER}/${GITEE_REPO}.git"
+          git push gitee HEAD:main --force
+          git push gitee "$TAG" --force
+
           GITEE_API="https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/releases"
 
-          RELEASE_ID=$(curl -s -X POST "$GITEE_API" \
+          GITEE_RESP=$(curl -s -X POST "${GITEE_API}?access_token=${GITEE_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "{\"access_token\":\"${GITEE_TOKEN}\",\"tag_name\":\"${TAG}\",\"name\":\"Checkpoint ${TAG}\",\"body\":\"Release ${TAG}\"}" \
-            | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).id))")
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"Checkpoint ${TAG}\",\"body\":\"Release ${TAG}\"}")
+          echo "Gitee API response: $GITEE_RESP"
 
-          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
-            echo "ERROR: Failed to create Gitee release"
+          RELEASE_ID=$(echo "$GITEE_RESP" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{ try{ console.log(JSON.parse(d).id) }catch(e){ console.log('parse_error') } })")
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ] || [ "$RELEASE_ID" = "parse_error" ]; then
+            echo "ERROR: Failed to create Gitee release (id=$RELEASE_ID)"
             exit 1
           fi
           echo "Gitee release ID: $RELEASE_ID"
 
-          curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files" \
-            -F "access_token=${GITEE_TOKEN}" \
+          curl -s -X POST "https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/releases/${RELEASE_ID}/attach_files?access_token=${GITEE_TOKEN}" \
             -F "file=@${INSTALLER}"
 
           # Gitee download URL
