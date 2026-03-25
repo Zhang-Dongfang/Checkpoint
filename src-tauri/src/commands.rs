@@ -389,6 +389,15 @@ pub fn get_saves(project_path: String) -> Result<Vec<SaveInfo>, String> {
     walk.set_sorting(Sort::TIME).map_err(|e| e.to_string())?;
     walk.push(head_oid).map_err(|e| e.to_string())?;
 
+    // Also walk preserved tips from past rollbacks so those future saves remain visible
+    if let Ok(refs) = repo.references_glob("refs/savepoint/tip/*") {
+        for r in refs.flatten() {
+            if let Some(tip_oid) = r.target() {
+                let _ = walk.push(tip_oid);
+            }
+        }
+    }
+
     let mut saves = Vec::new();
     for oid in walk {
         let oid = oid.map_err(|e| e.to_string())?;
@@ -611,6 +620,16 @@ pub fn rollback_to(project_path: String, save_id: String) -> Result<(), String> 
 
     let oid = git2::Oid::from_str(&save_id).map_err(|e| e.to_string())?;
     let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
+
+    // Before detaching, preserve the current tip so future saves remain reachable
+    if let Ok(head) = repo.head() {
+        if let Some(tip_oid) = head.target() {
+            if tip_oid != oid {
+                let ref_name = format!("refs/savepoint/tip/{}", tip_oid);
+                let _ = repo.reference(&ref_name, tip_oid, false, "preserve tip before rollback");
+            }
+        }
+    }
 
     // Checkout the target commit in the shadow repo
     let mut co = git2::build::CheckoutBuilder::new();
