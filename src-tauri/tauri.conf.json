@@ -42,7 +42,6 @@
                                     "pubkey":  "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwMTRGNUI5MTAwOTNBQUEKUldTcU9na1F1ZlVVZ0FzZ2lBNFJNZ2lnMkFTSGtVMEpBZlVKZjlOUm9hWXFmUUlLQ1prbkRxVWIK",
                                     "endpoints":  [
                                                       "https://gitee.com/Zhang-Dongfang/Checkpoint/raw/main/latest.json",
-                                                      "https://cdn.jsdelivr.net/gh/Zhang-Dongfang/Checkpoint@main/latest.json",
                                                       "https://raw.githubusercontent.com/Zhang-Dongfang/Checkpoint/main/latest.json"
                                                   ]
                                 }
