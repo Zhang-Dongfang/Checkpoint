@@ -1,21 +1,27 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
 
   <!-- Background -->
-  <rect width="1024" height="1024" rx="230" fill="#0d0d0f"/>
+  <rect width="1024" height="1024" rx="230" fill="#f5f5f7"/>
 
-  <!-- Diamond: subtle fill -->
-  <path d="M512 168 L856 512 L512 856 L168 512 Z"
-        fill="rgba(232,232,232,0.04)"/>
+  <!-- Floppy disk body (notch at top-right) -->
+  <path d="M152 152 L728 152 L872 296 L872 872 L152 872 Z"
+        fill="rgba(0,0,0,0.04)"
+        stroke="#111111" stroke-width="28" stroke-linejoin="round" opacity="0.72"/>
 
-  <!-- Diamond: outer stroke -->
-  <path d="M512 168 L856 512 L512 856 L168 512 Z"
-        stroke="#e8e8e8" stroke-width="24" stroke-linejoin="round" opacity="0.75"/>
+  <!-- Shutter area (top-left block) -->
+  <rect x="152" y="152" width="356" height="252"
+        fill="rgba(0,0,0,0.07)"/>
 
-  <!-- Center ring -->
-  <circle cx="512" cy="512" r="88" fill="none"
-          stroke="#e8e8e8" stroke-width="18" opacity="0.18"/>
+  <!-- Shutter slot line -->
+  <line x1="212" y1="348" x2="460" y2="348"
+        stroke="#111111" stroke-width="22" stroke-linecap="round" opacity="0.3"/>
 
-  <!-- Center dot: green (唯一的彩色，对应 autosave 状态点) -->
-  <circle cx="512" cy="512" r="40" fill="#3ecf8e"/>
+  <!-- Label area -->
+  <rect x="212" y="570" width="512" height="256" rx="10"
+        fill="rgba(0,0,0,0.04)"
+        stroke="#111111" stroke-width="20" opacity="0.28"/>
+
+  <!-- Green accent bar in label -->
+  <rect x="272" y="648" width="196" height="40" rx="8" fill="#3ecf8e" opacity="0.88"/>
 
 </svg>

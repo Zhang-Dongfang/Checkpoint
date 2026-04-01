@@ -26,7 +26,8 @@
       "Bash(printf 'PLACEHOLDER - 产品详情页切图 v1\\\\n此文件为演示用占位文件')",
       "Bash(\"E:\\\\Checkpoint\\\\演示项目\\\\素材\\\\详情页切图.psd\")",
       "Bash(printf 'PLACEHOLDER - 产品介绍文档 v1\\\\n此文件为演示用占位文件')",
-      "Bash(gh release:*)"
+      "Bash(gh release:*)",
+      "Bash(npx @tauri-apps/cli icon src-tauri/icons/icon.svg)"
     ]
   }
 }
